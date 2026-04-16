@@ -1,0 +1,28 @@
+# --- Terraform & GCP service account key ---
+secrets/credentials.json
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.backup
+secrets/terraform.tfvars
+.terraform.tfstate.lock.info
+
+# --- Secrets ---
+secrets/.secrets.env
+qdrant-gcp/scripts/.qdrant-api-key.env
+
+# --- Keys / certs ---
+*.pem
+*.key
+
+# --- Temporary files ---
+*.tmp
+*.log
+
+# --- Jingra / benchmark artifacts ---
+query-dumps/
+
+# --- analyze/ ---
+analyze/output/
+analyze/**/*.csv
+analyze/**/*.png

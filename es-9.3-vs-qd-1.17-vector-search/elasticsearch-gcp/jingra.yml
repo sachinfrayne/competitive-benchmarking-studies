@@ -1,0 +1,87 @@
+engine: "elasticsearch"
+
+elasticsearch:
+  url_env: "ELASTICSEARCH_URL"
+  user_env: "ELASTICSEARCH_USER"
+  password_env: "ENGINE_PASSWORD"
+  query_dump_directory: ./query-dumps
+
+dataset: "wiki-dpr-e5-768"
+
+datasets:
+  wiki-dpr-e5-768:
+    type: "parquet"
+    index_name: "wiki-dpr-e5-768"
+    vector_size: 768
+    distance: "cosine"
+    schema_name: "wiki_dpr_e5_768_knn"
+    query_name: "wiki_dpr_e5_768_knn"
+    path:
+      data_path: "datasets/wiki-dpr-e5-768/data.parquet"
+      queries_path: "datasets/wiki-dpr-e5-768/queries.parquet"
+      data_url_env: "DATASET_DATA_URL"
+      queries_url_env: "DATASET_QUERIES_URL"
+    data_mapping:
+      id_field: "id"
+      vector_field: "embedding"
+    queries_mapping:
+      query_vector_field: "embedding"
+      ground_truth_field: "closest_ids"
+    param_groups:
+      recall@100:
+        - { size: 100, k: 30, num_candidates: 100, rescore: 1 }
+        - { size: 100, k: 40, num_candidates: 100, rescore: 1 }
+        - { size: 100, k: 50, num_candidates: 100, rescore: 1 }
+        - { size: 100, k: 60, num_candidates: 100, rescore: 1 }
+        - { size: 100, k: 70, num_candidates: 100, rescore: 1 }
+        - { size: 100, k: 80, num_candidates: 100, rescore: 1 }
+        - { size: 100, k: 90, num_candidates: 100, rescore: 1 }
+        - { size: 100, k: 100, num_candidates: 100, rescore: 1 }
+        - { size: 100, k: 100, num_candidates: 100, rescore: 2 }
+        - { size: 100, k: 100, num_candidates: 100, rescore: 3 }
+        - { size: 100, k: 150, num_candidates: 150, rescore: 1 }
+        - { size: 100, k: 150, num_candidates: 150, rescore: 2 }
+        - { size: 100, k: 150, num_candidates: 150, rescore: 3 }
+        - { size: 100, k: 200, num_candidates: 200, rescore: 1 }
+        - { size: 100, k: 200, num_candidates: 200, rescore: 2 }
+        - { size: 100, k: 200, num_candidates: 200, rescore: 3 }
+        - { size: 100, k: 250, num_candidates: 250, rescore: 1 }
+        - { size: 100, k: 250, num_candidates: 250, rescore: 2 }
+        - { size: 100, k: 250, num_candidates: 250, rescore: 3 }
+        - { size: 100, k: 300, num_candidates: 300, rescore: 1 }
+        - { size: 100, k: 300, num_candidates: 300, rescore: 2 }
+        - { size: 100, k: 300, num_candidates: 300, rescore: 3 }
+        - { size: 100, k: 400, num_candidates: 400, rescore: 3 }
+        - { size: 100, k: 500, num_candidates: 500, rescore: 3 }
+        - { size: 100, k: 600, num_candidates: 600, rescore: 3 }
+        - { size: 100, k: 700, num_candidates: 700, rescore: 3 }
+        - { size: 100, k: 800, num_candidates: 800, rescore: 3 }
+        - { size: 100, k: 900, num_candidates: 900, rescore: 3 }
+        - { size: 100, k: 1000, num_candidates: 1000, rescore: 3 }
+        - { size: 100, k: 1500, num_candidates: 1500, rescore: 3 }
+        - { size: 100, k: 2000, num_candidates: 2000, rescore: 3 }
+        - { size: 100, k: 2500, num_candidates: 2500, rescore: 3 }
+        - { size: 100, k: 3000, num_candidates: 3000, rescore: 3 }
+        - { size: 100, k: 4000, num_candidates: 4000, rescore: 3 }
+        - { size: 100, k: 5000, num_candidates: 5000, rescore: 3 }
+        - { size: 100, k: 6000, num_candidates: 6000, rescore: 3 }
+        - { size: 100, k: 7000, num_candidates: 7000, rescore: 3 }
+        - { size: 100, k: 8000, num_candidates: 8000, rescore: 3 }
+        - { size: 100, k: 9000, num_candidates: 9000, rescore: 3 }
+        - { size: 100, k: 10000, num_candidates: 10000, rescore: 3 }
+
+evaluation:
+  warmup_workers: 16
+  measurement_workers: 16
+  warmup_rounds: 3
+  measurement_rounds: 1
+  run_id: "jingra-es-9.4-vs-qd-1.17-vector-search-5-testing"
+
+output:
+  sinks:
+    - type: "elasticsearch"
+      config:
+        url_env: "RESULTS_ES_URL"
+        user_env: "RESULTS_ES_USER"
+        password_env: "RESULTS_ES_PASSWORD"
+        index: "jingra-results"

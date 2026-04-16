@@ -1,0 +1,28 @@
+{
+  "name": "wiki_dpr_e5_768_knn",
+  "template": {
+    "mappings": {
+      "properties": {
+        "embedding": {
+          "type": "dense_vector",
+          "element_type": "float",
+          "dims": 768,
+          "index": true,
+          "similarity": "cosine",
+          "index_options": {
+            "type": "bbq_hnsw",
+            "ef_construction": 100,
+            "m": 16,
+            "rescore_vector": {
+              "oversample": 3.0
+            }
+          }
+        }
+      }
+    },
+    "settings": {
+      "number_of_shards": "3",
+      "number_of_replicas": "1"
+    }
+  }
+}

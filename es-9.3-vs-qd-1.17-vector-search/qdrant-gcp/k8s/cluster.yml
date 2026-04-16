@@ -1,0 +1,180 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: qdrant-cluster-entrypoint
+  namespace: default
+data:
+  entrypoint.sh: |
+    #!/bin/sh
+    set -e
+    # Each peer must advertise its own P2P URI; followers also need --bootstrap (see Qdrant distributed docs).
+    SELF_URI="http://${HOSTNAME}.qdrant-headless.default.svc:6335"
+    BOOTSTRAP_URI="http://qdrant-0.qdrant-headless.default.svc:6335"
+    if [ "$HOSTNAME" = "qdrant-0" ]; then
+      exec /qdrant/qdrant --uri "$SELF_URI"
+    else
+      exec /qdrant/qdrant --uri "$SELF_URI" --bootstrap "$BOOTSTRAP_URI"
+    fi
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: qdrant
+  namespace: default
+spec:
+  serviceName: qdrant-headless
+  replicas: 6
+  selector:
+    matchLabels:
+      app: qdrant
+  template:
+    metadata:
+      labels:
+        app: qdrant
+    spec:
+      nodeSelector:
+        cloud.google.com/gke-nodepool: qdrant-context-engineering-nodepool
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: qdrant
+                topologyKey: kubernetes.io/hostname
+      volumes:
+        - name: entrypoint
+          configMap:
+            name: qdrant-cluster-entrypoint
+            defaultMode: 0755
+        - name: qdrant-tls
+          secret:
+            secretName: qdrant-tls
+      containers:
+        - name: qdrant
+          image: qdrant/qdrant:v1.17.0
+          command: ["/bin/sh", "/qdrant/entrypoint.sh"]
+          env:
+            - name: QDRANT__CLUSTER__ENABLED
+              value: "true"
+            - name: QDRANT__CLUSTER__P2P__PORT
+              value: "6335"
+            - name: QDRANT__SERVICE__ENABLE_TLS
+              value: "true"
+            - name: QDRANT__TLS__CERT
+              value: /tls/tls.crt
+            - name: QDRANT__TLS__KEY
+              value: /tls/tls.key
+            - name: QDRANT__SERVICE__API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: qdrant-api-key
+                  key: api-key
+          ports:
+            - containerPort: 6333
+              name: http
+            - containerPort: 6334
+              name: grpc
+            - containerPort: 6335
+              name: p2p
+          volumeMounts:
+            - name: qdrant-storage
+              mountPath: /qdrant/storage
+            - name: entrypoint
+              mountPath: /qdrant/entrypoint.sh
+              subPath: entrypoint.sh
+              readOnly: true
+            - name: qdrant-tls
+              mountPath: /tls
+              readOnly: true
+          resources:
+            requests:
+              memory: "56Gi"
+              cpu: 15
+            limits:
+              memory: "56Gi"
+              cpu: 15
+          # TCP probes: HTTPS + kubelet cert verification and API-key headers make httpGet brittle for self-signed certs.
+          livenessProbe:
+            tcpSocket:
+              port: 6333
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            tcpSocket:
+              port: 6333
+            initialDelaySeconds: 10
+            periodSeconds: 5
+  volumeClaimTemplates:
+    - metadata:
+        name: qdrant-storage
+      spec:
+        storageClassName: premium-rwo
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 200Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: qdrant-headless
+  namespace: default
+spec:
+  clusterIP: None
+  selector:
+    app: qdrant
+  ports:
+    - name: http
+      port: 6333
+      targetPort: 6333
+    - name: grpc
+      port: 6334
+      targetPort: 6334
+    - name: p2p
+      port: 6335
+      targetPort: 6335
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: qdrant-service
+  namespace: default
+spec:
+  type: LoadBalancer
+  # Optional: restrict who can reach the LB (e.g. office or home /32). Omit for open access.
+  # loadBalancerSourceRanges:
+  #   - "198.51.100.0/24"
+  selector:
+    app: qdrant
+  ports:
+    - name: http
+      protocol: TCP
+      port: 6333
+      targetPort: 6333
+    - name: grpc
+      protocol: TCP
+      port: 6334
+      targetPort: 6334
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: qdrant-benchmark
+  namespace: default
+spec:
+  type: ClusterIP
+  selector:
+    app: qdrant
+  ports:
+    - name: http
+      protocol: TCP
+      port: 6333
+      targetPort: 6333
+    - name: grpc
+      protocol: TCP
+      port: 6334
+      targetPort: 6334

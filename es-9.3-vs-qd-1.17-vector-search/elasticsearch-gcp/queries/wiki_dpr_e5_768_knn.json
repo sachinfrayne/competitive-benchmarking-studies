@@ -1,0 +1,18 @@
+{
+  "name": "wiki_dpr_e5_768_knn",
+  "template": {
+    "query": {
+      "knn": {
+        "field": "embedding",
+        "query_vector": "{{query_vector}}",
+        "k": "{{k}}",
+        "num_candidates": "{{num_candidates}}",
+        "rescore_vector": {
+          "oversample": "{{rescore}}"
+        }
+      }
+    },
+    "size": "{{size}}",
+    "_source": false
+  }
+}

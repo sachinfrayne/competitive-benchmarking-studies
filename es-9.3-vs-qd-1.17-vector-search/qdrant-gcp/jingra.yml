@@ -1,0 +1,108 @@
+engine: "qdrant"
+
+qdrant:
+  url_env: "QDRANT_URL"
+  api_key_env: "ENGINE_PASSWORD"
+  vector_field: "embedding"
+  grpc_timeout_seconds: 300
+  query_dump_directory: ./query-dumps
+
+dataset: "wiki-dpr-e5-768"
+
+datasets:
+  wiki-dpr-e5-768:
+    type: "parquet"
+    index_name: "wiki-dpr-e5-768"
+    vector_size: 768
+    distance: "cosine"
+    schema_name: "wiki_dpr_e5_768_knn"
+    query_name: "wiki_dpr_e5_768_knn"
+    path:
+      data_path: "datasets/wiki-dpr-e5-768/data.parquet"
+      queries_path: "datasets/wiki-dpr-e5-768/queries.parquet"
+      data_url_env: "DATASET_DATA_URL"
+      queries_url_env: "DATASET_QUERIES_URL"
+    data_mapping:
+      id_field: "id"
+      vector_field: "embedding"
+    queries_mapping:
+      query_vector_field: "embedding"
+      ground_truth_field: "closest_ids"
+    param_groups:
+      recall@100:
+        # - {size: 100, num_candidates: 100, rescore: 1}
+        # - {size: 100, num_candidates: 150, rescore: 1.5}
+        # - {size: 100, num_candidates: 200, rescore: 2}
+        # - {size: 100, num_candidates: 250, rescore: 2.5}
+        # - {size: 100, num_candidates: 300, rescore: 3}
+        # - {size: 100, num_candidates: 400, rescore: 4}
+        # - {size: 100, num_candidates: 500, rescore: 5}
+        # - {size: 100, num_candidates: 600, rescore: 6}
+        # - {size: 100, num_candidates: 700, rescore: 7}
+        # - {size: 100, num_candidates: 800, rescore: 8}
+        # - {size: 100, num_candidates: 900, rescore: 9}
+        # - {size: 100, num_candidates: 1000, rescore: 10}
+        # - {size: 100, num_candidates: 1500, rescore: 15}
+        # - {size: 100, num_candidates: 2000, rescore: 20}
+        # - {size: 100, num_candidates: 2500, rescore: 25}
+        # - {size: 100, num_candidates: 3000, rescore: 30}
+        # - {size: 100, num_candidates: 4000, rescore: 40}
+        # - {size: 100, num_candidates: 5000, rescore: 50}
+        # - {size: 100, num_candidates: 6000, rescore: 60}
+        # - {size: 100, num_candidates: 7000, rescore: 70}
+        # - {size: 100, num_candidates: 8000, rescore: 80}
+        # - {size: 100, num_candidates: 9000, rescore: 90}
+        # - {size: 100, num_candidates: 10000, rescore: 100}
+        # - {size: 100, num_candidates: 11000, rescore: 110}
+        # - {size: 100, num_candidates: 12000, rescore: 120}
+        # - {size: 100, num_candidates: 13000, rescore: 130}
+        # - {size: 100, num_candidates: 14000, rescore: 140}
+        # - {size: 100, num_candidates: 15000, rescore: 150}
+        # - {size: 100, num_candidates: 16000, rescore: 160}
+        # - {size: 100, num_candidates: 17000, rescore: 170}
+        # - {size: 100, num_candidates: 18000, rescore: 180}
+        # - {size: 100, num_candidates: 19000, rescore: 190}
+        # - {size: 100, num_candidates: 20000, rescore: 200}
+        # - {size: 100, num_candidates: 21000, rescore: 210}
+        # - {size: 100, num_candidates: 22000, rescore: 220}
+        # - {size: 100, num_candidates: 23000, rescore: 230}
+        # - {size: 100, num_candidates: 24000, rescore: 240}
+        # - {size: 100, num_candidates: 25000, rescore: 250}
+        # - {size: 100, num_candidates: 1000, rescore: 100}
+        # - {size: 100, num_candidates: 1500, rescore: 150}
+        # - {size: 100, num_candidates: 2000, rescore: 200}
+        # - {size: 100, num_candidates: 2500, rescore: 250}
+        # - {size: 100, num_candidates: 3000, rescore: 300}
+        # - {size: 100, num_candidates: 4000, rescore: 400}
+        # - {size: 100, num_candidates: 5000, rescore: 500}
+        # - {size: 100, num_candidates: 6000, rescore: 600}
+        # - {size: 100, num_candidates: 7000, rescore: 700}
+        # - {size: 100, num_candidates: 8000, rescore: 800}
+        # - {size: 100, num_candidates: 9000, rescore: 900}
+        # - {size: 100, num_candidates: 100, rescore: 100}
+        # - {size: 100, num_candidates: 150, rescore: 150}
+        # - {size: 100, num_candidates: 200, rescore: 200}
+        # - {size: 100, num_candidates: 250, rescore: 250}
+        # - {size: 100, num_candidates: 300, rescore: 300}
+        # - {size: 100, num_candidates: 400, rescore: 400}
+        - { size: 100, num_candidates: 500, rescore: 500 }
+        - { size: 100, num_candidates: 600, rescore: 600 }
+        - { size: 100, num_candidates: 700, rescore: 700 }
+        - { size: 100, num_candidates: 800, rescore: 800 }
+        - { size: 100, num_candidates: 900, rescore: 900 }
+
+evaluation:
+  warmup_workers: 16
+  measurement_workers: 16
+  warmup_rounds: 3
+  measurement_rounds: 1
+  run_id: "jingra-es-9.4-vs-qd-1.17-vector-search-5-testing"
+
+output:
+  sinks:
+    - type: "elasticsearch"
+      config:
+        url_env: "RESULTS_ES_URL"
+        user_env: "RESULTS_ES_USER"
+        password_env: "RESULTS_ES_PASSWORD"
+        index: "jingra-results"

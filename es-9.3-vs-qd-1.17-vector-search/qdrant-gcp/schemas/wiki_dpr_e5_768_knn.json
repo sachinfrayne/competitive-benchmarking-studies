@@ -1,0 +1,27 @@
+{
+  "name": "wiki_dpr_e5_768_knn",
+  "template": {
+    "mappings": {
+      "properties": {
+        "embedding": {
+          "type": "dense_vector",
+          "size": 768,
+          "distance": "Cosine"
+        }
+      }
+    },
+    "settings": {
+      "shard_number": 3,
+      "replication_factor": 2,
+      "hnsw_config": {
+        "m": 16,
+        "ef_construct": 100
+      },
+      "quantization_config": {
+        "binary": {
+          "always_ram": true
+        }
+      }
+    }
+  }
+}
