@@ -14,7 +14,7 @@ spec:
       podTemplate:
         spec:
           nodeSelector:
-            cloud.google.com/gke-nodepool: es-context-engineering-nodepool
+            cloud.google.com/gke-nodepool: elasticsearch-nodepool
           initContainers:
             - name: sysctl
               securityContext:
@@ -54,10 +54,19 @@ spec:
   podTemplate:
     spec:
       nodeSelector:
-        cloud.google.com/gke-nodepool: kb-context-engineering-nodepool
+        cloud.google.com/gke-nodepool: kibana-nodepool
   count: 1
   elasticsearchRef:
     name: es-cluster
   config:
     xpack.security.session.idleTimeout: "7d"
     xpack.security.session.lifespan: "1Y"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: jingra-connection
+  namespace: default
+data:
+  ELASTICSEARCH_URL: "https://es-cluster-es-internal-http.default.svc.cluster.local:9200"
+  ELASTICSEARCH_USER: "elastic"

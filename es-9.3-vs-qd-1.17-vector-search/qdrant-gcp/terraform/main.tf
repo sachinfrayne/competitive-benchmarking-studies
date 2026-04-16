@@ -1,0 +1,28 @@
+terraform {
+  required_version = ">= 1.0"
+
+  required_providers {
+    google = {
+      source  = "hashicorp/google"
+      version = ">= 5.0"
+    }
+  }
+}
+
+variable "project_id" {
+  type = string
+}
+
+provider "google" {
+  project     = var.project_id
+  region      = "us-central1"
+  credentials = file(abspath("${path.root}/../../secrets/credentials.json"))
+}
+
+module "gke_benchmark" {
+  source = "../../terraform-modules/gke_benchmark"
+
+  cluster_name        = "qdrant-benchmark"
+  main_pool_name      = "qdrant-nodepool"
+  enable_ui_node_pool = false
+}

@@ -123,7 +123,6 @@ jingra-load: secrets-create connect-k8s jingra-load-stop
 	@echo "⚡ Starting data load..."
 	@echo "   1. Applying Jingra config..."
 	kubectl create configmap jingra-config --from-file=jingra.yaml=jingra.yml -n default --dry-run=client -o yaml | kubectl apply -f -
-	kubectl apply -f k8s/jingra-connection-configmap.yml
 	kubectl create configmap jingra-schemas --from-file=wiki_dpr_e5_768_knn.json=schemas/wiki_dpr_e5_768_knn.json -n default --dry-run=client -o yaml | kubectl apply -f -
 	kubectl create configmap jingra-queries --from-file=wiki_dpr_e5_768_knn.json=queries/wiki_dpr_e5_768_knn.json -n default --dry-run=client -o yaml | kubectl apply -f -
 	kubectl apply -f ../k8s/jingra-datasets-pvc.yml
@@ -136,7 +135,6 @@ jingra-load: secrets-create connect-k8s jingra-load-stop
 	cat ../k8s/jingra-load-job.yml | envsubst '$${JINGRA_IMAGE} $${JINGRA_VERSION}' | kubectl apply -f -
 	@echo ""
 	@echo "✅ Load job started (image: $(JINGRA_IMAGE))"
-	@echo "   Expected time: 7-12 minutes"
 	@echo "   Monitor: make logs-load"
 	@echo "   Stop:    make jingra-load-stop"
 
@@ -160,7 +158,6 @@ jingra-eval: secrets-create connect-k8s jingra-eval-stop
 	@echo "📊 Starting Jingra evaluation (image: $(JINGRA_IMAGE))..."
 	@echo "   1. Applying Jingra config..."
 	kubectl create configmap jingra-config --from-file=jingra.yaml=jingra.yml -n default --dry-run=client -o yaml | kubectl apply -f -
-	kubectl apply -f k8s/jingra-connection-configmap.yml
 	kubectl create configmap jingra-schemas --from-file=wiki_dpr_e5_768_knn.json=schemas/wiki_dpr_e5_768_knn.json -n default --dry-run=client -o yaml | kubectl apply -f -
 	kubectl create configmap jingra-queries --from-file=wiki_dpr_e5_768_knn.json=queries/wiki_dpr_e5_768_knn.json -n default --dry-run=client -o yaml | kubectl apply -f -
 	kubectl apply -f ../k8s/jingra-datasets-pvc.yml
@@ -220,15 +217,15 @@ metrics: connect-k8s
 
 connect-k8s:
 	@PROJECT_ID=$$(grep '^project_id' ../secrets/terraform.tfvars | awk -F'=' '{print $$2}' | tr -d ' "'); \
-	echo "🔗 Refreshing GKE credentials (qdrant-context-engineering-benchmark)..."; \
-	gcloud container clusters get-credentials qdrant-context-engineering-benchmark \
+	echo "🔗 Refreshing GKE credentials (qdrant-benchmark)..."; \
+	gcloud container clusters get-credentials qdrant-benchmark \
 		--zone us-central1-a --project $$PROJECT_ID; \
 	if ! kubectl cluster-info --request-timeout=20s >/dev/null; then \
 		echo ""; \
 		echo "❌ Cannot reach the Kubernetes API (timeout or connection failed)."; \
 		echo "   Typical causes: master authorized networks (add this machine's public IP),"; \
 		echo "   private GKE control plane without VPN, or offline/restrictive network."; \
-		echo "   Try: gcloud container clusters describe qdrant-context-engineering-benchmark --zone us-central1-a --project $$PROJECT_ID"; \
+		echo "   Try: gcloud container clusters describe qdrant-benchmark --zone us-central1-a --project $$PROJECT_ID"; \
 		exit 1; \
 	fi; \
 	echo "✅ kubectl context: $$(kubectl config current-context)"
