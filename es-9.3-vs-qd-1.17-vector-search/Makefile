@@ -1,6 +1,8 @@
 SHELL := /bin/bash
 
 REPO_ROOT := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+ANALYZE_DIR := $(REPO_ROOT)analyze
+ANALYZE_OUTPUT_DIR := $(ANALYZE_DIR)/output
 
 STACK_TARGETS := \
 	terraform-plan terraform-apply terraform-destroy \
@@ -10,9 +12,15 @@ STACK_TARGETS := \
 	jingra-eval jingra-eval-stop logs-eval copy-query-dumps \
 	status metrics logs-engine connect-ui logs-ui
 
-.PHONY: help analyze elasticsearch qdrant $(STACK_TARGETS)
+.PHONY: help analyze analyze-clean elasticsearch qdrant $(STACK_TARGETS)
 
 .DEFAULT_GOAL := help
+
+-include $(REPO_ROOT)secrets/.secrets.env
+
+define require_env
+	@bash -c 'if [ -z "$${$1:-}" ]; then echo "ERROR: $1 not set" >&2; exit 1; fi'
+endef
 
 help:
 	@echo "Vector search benchmark — run from this directory (repo root)"
@@ -67,13 +75,32 @@ help:
 	@echo ""
 	@echo "Post-run analysis (not stack-prefixed):"
 	@echo "  make analyze JINGRA_IMAGE=<ref>"
-	@echo "    Clears analyze/output, runs Jingra analyze in Docker."
+	@echo "    Clears analyze/output/, runs Jingra analyze in Docker."
 	@echo "    Needs RESULTS_ES_URL, RESULTS_ES_USER, RESULTS_ES_PASSWORD (env or secrets/.secrets.env)."
 	@echo "    Writes CSVs under analyze/output/ (recall, summary, throughput comparisons)."
+	@echo "  make analyze-clean"
+	@echo "    Removes analyze/output/."
 	@echo ""
 
-analyze:
-	@$(MAKE) -C analyze clean analyze
+analyze-clean:
+	@rm -rf "$(ANALYZE_OUTPUT_DIR)"
+
+$(ANALYZE_OUTPUT_DIR):
+	@mkdir -p "$@"
+
+analyze: analyze-clean | $(ANALYZE_OUTPUT_DIR)
+	$(call require_env,RESULTS_ES_URL)
+	$(call require_env,RESULTS_ES_USER)
+	$(call require_env,RESULTS_ES_PASSWORD)
+	$(call require_env,JINGRA_IMAGE)
+	@docker run --rm \
+		-v "$(ANALYZE_DIR)/jingra.yml:/config/jingra.yml:ro" \
+		-v "$(ANALYZE_OUTPUT_DIR):/output" \
+		-e RESULTS_ES_URL \
+		-e RESULTS_ES_USER \
+		-e RESULTS_ES_PASSWORD \
+		"$(JINGRA_IMAGE)" \
+		analyze /config/jingra.yml
 
 elasticsearch:
 	@targets="$(filter-out $@,$(MAKECMDGOALS))"; \
