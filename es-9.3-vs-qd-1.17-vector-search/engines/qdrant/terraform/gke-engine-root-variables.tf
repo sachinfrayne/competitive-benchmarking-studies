@@ -1,7 +1,3 @@
-# Root variables for engines/*/terraform (GKE benchmark inputs from variables/terraform.tfvars).
-# Copied to each engine terraform/gke-engine-root-variables.tf by `make <stack> terraform-init`.
-# Source lives here (not as .tf) so Terraform does not merge this file into the gke-benchmark module.
-
 variable "location" {
   type = string
 }

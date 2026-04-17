@@ -62,9 +62,9 @@ datasets:
 evaluation:
   warmup_workers: 16
   measurement_workers: 16
-  warmup_rounds: 0
+  warmup_rounds: 3
   measurement_rounds: 1
-  run_id: "es-9.3-vs-qd-1.17-vector-search-5"
+  run_id: "es-9.3-vs-qd-1.17-vector-search-6"
 
 output:
   sinks:

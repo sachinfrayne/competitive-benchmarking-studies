@@ -11,6 +11,8 @@ spec:
   nodeSets:
     - name: default
       count: ${workerCount}
+      config:
+        xpack.license.self_generated.type: trial
       podTemplate:
         spec:
           nodeSelector:
