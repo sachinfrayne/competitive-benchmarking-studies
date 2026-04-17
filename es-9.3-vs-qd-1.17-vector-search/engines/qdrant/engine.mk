@@ -17,10 +17,10 @@ UI_URL_TEMPLATE := URL:      https://$${EXTERNAL_IP}:6333/dashboard
 
 ensure-qdrant-api-key-in-env:
 	@set -euo pipefail; \
-	GENERAL_SECRETS="$(REPO_ROOT)/secrets/.secrets.env"; \
+	GENERAL_SECRETS="$(REPO_ROOT)/shared/secrets/.secrets.env"; \
 	QDRANT_KEY_FILE="$(STACK_DIR).qdrant-api-key.env"; \
 	if [[ ! -f "$$GENERAL_SECRETS" ]]; then \
-		echo >&2 "ERROR: $$GENERAL_SECRETS not found. Copy secrets/.secrets.env.example to secrets/.secrets.env and fill values."; \
+		echo >&2 "ERROR: $$GENERAL_SECRETS not found. Copy shared/secrets/.secrets.env.example to shared/secrets/.secrets.env and fill values."; \
 		exit 1; \
 	fi; \
 	if [[ -f "$$QDRANT_KEY_FILE" ]] && grep -qE '^QDRANT_API_KEY=[^[:space:]]+' "$$QDRANT_KEY_FILE" 2>/dev/null; then \

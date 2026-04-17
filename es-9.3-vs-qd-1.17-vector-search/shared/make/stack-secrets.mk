@@ -17,11 +17,11 @@ ENGINE_CREDENTIALS_UPSERT ?=
 secrets-create: connect-k8s $(ENGINE_SECRET_PREREQS)
 	@set -euo pipefail; \
 	NS="$(or $(NAMESPACE),default)"; \
-	SECRETS_ENV="$(REPO_ROOT)/secrets/.secrets.env"; \
+	SECRETS_ENV="$(REPO_ROOT)/shared/secrets/.secrets.env"; \
 	if [[ -f "$$SECRETS_ENV" ]]; then \
 		set -a; source "$$SECRETS_ENV"; set +a; \
 	else \
-		echo >&2 "Note: $$SECRETS_ENV not found; using environment only. Copy secrets/.secrets.env.example to secrets/.secrets.env to use a file."; \
+		echo >&2 "Note: $$SECRETS_ENV not found; using environment only. Copy shared/secrets/.secrets.env.example to shared/secrets/.secrets.env to use a file."; \
 	fi; \
 	$(ENGINE_SOURCE_ENV) \
 	for var in DOCKER_USERNAME DOCKER_PASSWORD DOCKER_EMAIL; do \

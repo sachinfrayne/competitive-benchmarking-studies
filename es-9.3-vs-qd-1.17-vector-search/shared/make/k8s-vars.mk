@@ -1,12 +1,13 @@
-# Renders engines/$(STACK)/k8s/*.yaml with sizing from K8S_VARS, then kubectl apply.
-# Reads K8S_VARS with mikefarah yq v4 (same as jingra run_id merge).
+# Renders engines/$(STACK)/k8s/*.yaml with sizing from K8S_VARS plus stack-local
+# engines/$(STACK)/k8s/.version (plain text → env engineVersion), then kubectl apply.
+# Reads shared sizing YAML with mikefarah yq v4 (same as jingra run_id merge).
 # Requires: envsubst (gettext), yq.
-# Only substitutes known keys from variables/k8s.yml so other ${...} (e.g. ${HOSTNAME} in ConfigMaps) is untouched.
+# Only substitutes known keys so other ${...} (e.g. ${HOSTNAME} in ConfigMaps) is untouched.
 
-K8S_VARS ?= $(REPO_ROOT)/variables/k8s.yml
+K8S_VARS ?= $(REPO_ROOT)/shared/variables/k8s.yml
 
 # Explicit list so envsubst does not expand unrelated ${...} in manifests.
-K8S_ENVSUBST_VARS := $${workerCount} $${storageClassName} $${storageSize} $${memoryRequest} $${cpuRequest} $${memoryLimit} $${cpuLimit} $${elasticsearchVersion} $${qdrantVersion}
+K8S_ENVSUBST_VARS := $${workerCount} $${storageClassName} $${storageSize} $${memoryRequest} $${cpuRequest} $${memoryLimit} $${cpuLimit} $${engineVersion}
 
 define KUBECTL_APPLY_K8S_FROM_VARS
 	@set -euo pipefail; \
@@ -18,8 +19,13 @@ define KUBECTL_APPLY_K8S_FROM_VARS
 	}; \
 	command -v envsubst >/dev/null 2>&1 || { echo >&2 "ERROR: envsubst is required for k8s-apply (gettext package)"; exit 1; }; \
 	K8S_VARS_FILE='$(K8S_VARS)'; \
+	STACK_K8S_VARS='$(STACK_DIR)k8s/.version'; \
 	if [[ ! -f "$$K8S_VARS_FILE" ]]; then \
 		echo >&2 "ERROR: K8S vars file not found: $$K8S_VARS_FILE"; \
+		exit 1; \
+	fi; \
+	if [[ ! -f "$$STACK_K8S_VARS" ]]; then \
+		echo >&2 "ERROR: Stack version file not found: $$STACK_K8S_VARS"; \
 		exit 1; \
 	fi; \
 	export storageClassName="$$( k8s_read_yaml_value storageClassName "$$K8S_VARS_FILE" )"; \
@@ -29,8 +35,12 @@ define KUBECTL_APPLY_K8S_FROM_VARS
 	export memoryLimit="$$( k8s_read_yaml_value memoryLimit "$$K8S_VARS_FILE" )"; \
 	export cpuLimit="$$( k8s_read_yaml_value cpuLimit "$$K8S_VARS_FILE" )"; \
 	export workerCount="$$( k8s_read_yaml_value workerCount "$$K8S_VARS_FILE" )"; \
-	export elasticsearchVersion="$$( k8s_read_yaml_value elasticsearchVersion "$$K8S_VARS_FILE" )"; \
-	export qdrantVersion="$$( k8s_read_yaml_value qdrantVersion "$$K8S_VARS_FILE" )"; \
+	engineVersion="$$(head -n1 "$$STACK_K8S_VARS" | tr -d '\r' | sed 's/^[[:space:]]*//;s/[[:space:]]*$$//')"; \
+	if [[ -z "$$engineVersion" ]] || [[ "$$engineVersion" == \#* ]]; then \
+		echo >&2 "ERROR: missing or invalid version in $$STACK_K8S_VARS (expected first line: version string)"; \
+		exit 1; \
+	fi; \
+	export engineVersion; \
 	RENDER_DIR="$$(mktemp -d)"; \
 	trap 'rm -rf "$$RENDER_DIR"' EXIT; \
 	STACK_K8S='$(STACK_DIR)k8s'; \

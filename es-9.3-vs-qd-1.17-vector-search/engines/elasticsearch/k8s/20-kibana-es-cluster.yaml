@@ -3,7 +3,7 @@ kind: Kibana
 metadata:
   name: es-cluster
 spec:
-  version: "${elasticsearchVersion}"
+  version: "${engineVersion}"
   http:
     service:
       spec:

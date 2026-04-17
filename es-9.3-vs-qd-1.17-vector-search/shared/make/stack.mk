@@ -1,11 +1,11 @@
 SHELL := /bin/bash
 
-REPO_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST)))/..)
+REPO_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST)))/../..)
 
 STACK ?=
 
 ifeq ($(strip $(STACK)),)
-$(error STACK is required (e.g. STACK=elasticsearch or STACK=qdrant))
+$(error STACK is not set — from the repo root use: make <stack> <target> (stack = directory under engines/ that contains engine.mk))
 endif
 
 STACK_DIR := $(REPO_ROOT)/engines/$(STACK)/
@@ -27,4 +27,4 @@ JINGRA_SCHEMAS_DIR ?= $(STACK_DIR)schemas
 JINGRA_QUERIES_DIR ?= $(STACK_DIR)queries
 
 include $(STACK_DIR)engine.mk
-include $(REPO_ROOT)/make/common.mk
+include $(REPO_ROOT)/shared/make/common.mk

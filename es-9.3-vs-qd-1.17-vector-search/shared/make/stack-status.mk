@@ -1,14 +1,3 @@
-# Shared `status` target for engine stacks.
-# Requires: connect-k8s (from gke-connect.mk)
-#
-# Set by stack Makefile:
-# - STACK_ENGINE_LABEL (e.g. "Elasticsearch", "Qdrant")
-# - ENGINE_POD_SELECTOR (kubectl -l selector for engine pods)
-# Optional:
-# - UI_POD_SELECTOR (kubectl -l selector for UI pods)
-# - SERVICE_LABEL_SELECTOR (kubectl -l selector for services)
-# - SERVICE_NAMES (space-separated service names)
-
 .PHONY: status
 
 STACK_ENGINE_LABEL ?= Engine

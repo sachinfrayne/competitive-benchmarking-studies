@@ -3,7 +3,7 @@
 GKE_ZONE ?= us-central1-a
 
 connect-k8s:
-	@PROJECT_ID=$$(grep '^project_id' $(REPO_ROOT)/secrets/terraform.tfvars | awk -F'=' '{print $$2}' | tr -d ' "'); \
+	@PROJECT_ID=$$(grep '^project_id' $(REPO_ROOT)/shared/secrets/terraform.tfvars | awk -F'=' '{print $$2}' | tr -d ' "'); \
 	gcloud container clusters get-credentials $(GKE_CLUSTER_NAME) \
 		--zone $(GKE_ZONE) --project $$PROJECT_ID; \
 	if ! kubectl cluster-info --request-timeout=20s >/dev/null; then \

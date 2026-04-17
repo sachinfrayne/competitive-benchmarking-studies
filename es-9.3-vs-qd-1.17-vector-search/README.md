@@ -19,9 +19,9 @@ This benchmark compares approximate nearest neighbor (ANN) vector search between
 
 ## Infrastructure
 
-- **6 data nodes** per engine cluster (`workerCount` in `variables/k8s.yml`; pool `n2d-standard-16` in `variables/terraform.tfvars`, `pd-balanced` boot disk)
-- **200 Gi** persistent volume per data pod (`premium-rwo` in `variables/k8s.yml`)
-- GKE on GCP (**us-central1-a** in `variables/terraform.tfvars`)
+- **6 data nodes** per engine cluster (`workerCount` in `shared/variables/k8s.yml`; pool `n2d-standard-16` in `shared/variables/terraform.tfvars`, `pd-balanced` boot disk)
+- **200 Gi** persistent volume per data pod (`premium-rwo` in `shared/variables/k8s.yml`; stack software version is plain text in `engines/<stack>/k8s/.version`, exported as `engineVersion` for manifests)
+- GKE on GCP (**us-central1-a** in `shared/variables/terraform.tfvars`)
 - Separate clusters for Elasticsearch and Qdrant (`engines/<stack>/terraform/`)
 
 ## Key results (recall@100)
@@ -47,7 +47,7 @@ Full per-parameter rows: `analyze/output/recall@100_full_results.csv`. Plots (if
 
 ## Reproducing the benchmark
 
-Run from this directory. Copy and fill `secrets/.secrets.env.example` → `secrets/.secrets.env` and `secrets/terraform.tfvars.example` → `secrets/terraform.tfvars` first. Use the same `JINGRA_IMAGE` value everywhere you pass it below (your registry’s Jingra image tag). Further targets and env vars: `make help`.
+Run from this directory. Copy and fill `shared/secrets/.secrets.env.example` → `shared/secrets/.secrets.env` and `shared/secrets/terraform.tfvars.example` → `shared/secrets/terraform.tfvars` first. Use the same `JINGRA_IMAGE` value everywhere you pass it below (your registry’s Jingra image tag). Further targets and env vars: `make help`.
 
 ```bash
 make qdrant terraform-apply

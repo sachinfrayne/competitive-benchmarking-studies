@@ -4,7 +4,7 @@ REPO_ROOT := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 ANALYZE_DIR := $(REPO_ROOT)analyze
 ANALYZE_OUTPUT_DIR := $(ANALYZE_DIR)/output
 
-include $(REPO_ROOT)make/run-id.mk
+include $(REPO_ROOT)shared/make/run-id.mk
 
 ENGINES := elasticsearch qdrant
 
@@ -25,7 +25,7 @@ logs-eval:
 
 .DEFAULT_GOAL := help
 
--include $(REPO_ROOT)secrets/.secrets.env
+-include $(REPO_ROOT)shared/secrets/.secrets.env
 
 define require_env
 	@bash -c 'if [ -z "$${$1:-}" ]; then echo "ERROR: $1 not set" >&2; exit 1; fi'
@@ -47,15 +47,15 @@ help:
 	@echo "  terraform-plan"
 	@echo "  terraform-apply"
 	@echo "  terraform-destroy"
-	@echo "    Uses secrets/terraform.tfvars and variables/terraform.tfvars; init copies"
-	@echo "    infra/terraform/modules/gke-benchmark/gke-engine-root-variables.tf"
+	@echo "    Uses shared/secrets/terraform.tfvars and shared/variables/terraform.tfvars; init copies"
+	@echo "    shared/infra/terraform/modules/gke-benchmark/gke-engine-root-variables.tf"
 	@echo "    to engines/<stack>/terraform/gke-engine-root-variables.tf."
 	@echo ""
 	@echo "Kubernetes cluster:"
 	@echo "  k8s-apply"
 	@echo "  k8s-delete"
 	@echo ""
-	@echo "Jingra — load / eval (needs JINGRA_IMAGE; merges evaluation.run_id from variables/run_id.yml via yq):"
+	@echo "Jingra — load / eval (needs JINGRA_IMAGE; merges evaluation.run_id from shared/variables/run_id.yml via yq):"
 	@echo "  jingra-load"
 	@echo "  jingra-load-stop"
 	@echo "  jingra-load-logs"
@@ -76,7 +76,7 @@ help:
 	@echo "  JINGRA_VERSION=<text>     optional; defaults to image tag after last ':'"
 	@echo "  LINES=<n>                 optional; tail limit for jingra-load-logs / jingra-eval-logs"
 	@echo "  NAMESPACE=<ns>            Kubernetes namespace (default: default)"
-	@echo "  K8S_VARS=<path>           optional; sizing YAML for k8s-apply (default: variables/k8s.yml; needs envsubst + yq)"
+	@echo "  K8S_VARS=<path>           optional; shared sizing YAML for k8s-apply (default: shared/variables/k8s.yml; needs envsubst + yq). Stack version: engines/<stack>/k8s/.version"
 	@echo "  QUERY_DUMP_REMOTE=<path>  path in pod for copy-query-dumps"
 	@echo "  QUERY_DUMP_LOCAL=<path>   host directory for copy-query-dumps"
 	@echo "  EVAL_POD=<name>           pod override for copy-query-dumps"
@@ -84,8 +84,8 @@ help:
 	@echo "Post-run analysis (not stack-prefixed):"
 	@echo "  make analyze JINGRA_IMAGE=<ref>"
 	@echo "    Clears analyze/output/, runs Jingra analyze in Docker."
-	@echo "    Injects analysis.run_id from variables/run_id.yml (needs mikefarah yq v4)."
-	@echo "    Needs RESULTS_ES_URL, RESULTS_ES_USER, RESULTS_ES_PASSWORD (env or secrets/.secrets.env)."
+	@echo "    Injects analysis.run_id from shared/variables/run_id.yml (needs mikefarah yq v4)."
+	@echo "    Needs RESULTS_ES_URL, RESULTS_ES_USER, RESULTS_ES_PASSWORD (env or shared/secrets/.secrets.env)."
 	@echo "    Writes CSVs under analyze/output/ (recall, summary, throughput comparisons)."
 	@echo "  make analyze-clean"
 	@echo "    Removes analyze/output/."
@@ -99,8 +99,8 @@ $(ANALYZE_OUTPUT_DIR):
 
 analyze: analyze-clean | $(ANALYZE_OUTPUT_DIR)
 	@set -euo pipefail; \
-	if [ -f "$(REPO_ROOT)secrets/.secrets.env" ]; then \
-		set -a; source "$(REPO_ROOT)secrets/.secrets.env"; set +a; \
+	if [ -f "$(REPO_ROOT)shared/secrets/.secrets.env" ]; then \
+		set -a; source "$(REPO_ROOT)shared/secrets/.secrets.env"; set +a; \
 	fi; \
 	for var in RESULTS_ES_URL RESULTS_ES_USER RESULTS_ES_PASSWORD JINGRA_IMAGE; do \
 		if [ -z "$${!var:-}" ]; then echo "ERROR: $$var not set" >&2; exit 1; fi; \
@@ -129,7 +129,7 @@ elasticsearch qdrant:
 	fi; \
 	fwd="$$(echo "$$targets" | tr ' ' '\n' | grep -vx 'help' | tr '\n' ' ')"; \
 	if [ -n "$$fwd" ]; then \
-		$(MAKE) -f "$(REPO_ROOT)make/stack.mk" STACK=$@ $$fwd; \
+		$(MAKE) -f "$(REPO_ROOT)shared/make/stack.mk" STACK=$@ $$fwd; \
 	fi
 
 $(STACK_TARGETS):
