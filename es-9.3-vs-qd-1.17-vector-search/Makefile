@@ -67,7 +67,7 @@ help:
 	@echo "  metrics"
 	@echo "  logs-engine"
 	@echo "  connect-ui"
-	@echo "  logs-ui                  (Elasticsearch stack only)"
+	@echo "  logs-ui"
 	@echo ""
 	@echo "Variables (pass on the make command line with any stack target):"
 	@echo "  JINGRA_IMAGE=<ref>        required for jingra-load / jingra-eval"
