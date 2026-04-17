@@ -92,7 +92,7 @@ define UI_CREDENTIAL_LINES
 endef
 
 k8s-apply: secrets-create
-	kubectl apply -f $(STACK_DIR)k8s/
+	$(KUBECTL_APPLY_K8S_FROM_VARS)
 	kubectl wait --for=condition=ready pod -l app=qdrant --timeout=600s || true
 
 k8s-delete: connect-k8s

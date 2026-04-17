@@ -10,7 +10,7 @@ spec:
         type: ClusterIP
   nodeSets:
     - name: default
-      count: 6
+      count: ${workerCount}
       podTemplate:
         spec:
           nodeSelector:
@@ -25,18 +25,18 @@ spec:
             - name: elasticsearch
               resources:
                 requests:
-                  memory: 56Gi
-                  cpu: 15
+                  memory: "${memoryRequest}"
+                  cpu: "${cpuRequest}"
                 limits:
-                  memory: 56Gi
-                  cpu: 15
+                  memory: "${memoryLimit}"
+                  cpu: "${cpuLimit}"
       volumeClaimTemplates:
         - metadata:
             name: elasticsearch-data
           spec:
             accessModes:
               - ReadWriteOnce
-            storageClassName: premium-rwo
+            storageClassName: "${storageClassName}"
             resources:
               requests:
-                storage: 200Gi
+                storage: "${storageSize}"

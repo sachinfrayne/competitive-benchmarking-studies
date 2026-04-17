@@ -5,7 +5,7 @@ metadata:
   namespace: default
 spec:
   serviceName: qdrant-headless
-  replicas: 6
+  replicas: ${workerCount}
   selector:
     matchLabels:
       app: qdrant
@@ -72,11 +72,11 @@ spec:
               readOnly: true
           resources:
             requests:
-              memory: "56Gi"
-              cpu: 15
+              memory: "${memoryRequest}"
+              cpu: "${cpuRequest}"
             limits:
-              memory: "56Gi"
-              cpu: 15
+              memory: "${memoryLimit}"
+              cpu: "${cpuLimit}"
           # TCP probes: HTTPS + kubelet cert verification and API-key headers make httpGet brittle for self-signed certs.
           livenessProbe:
             tcpSocket:
@@ -92,9 +92,9 @@ spec:
     - metadata:
         name: qdrant-storage
       spec:
-        storageClassName: premium-rwo
+        storageClassName: "${storageClassName}"
         accessModes:
           - ReadWriteOnce
         resources:
           requests:
-            storage: 200Gi
+            storage: "${storageSize}"

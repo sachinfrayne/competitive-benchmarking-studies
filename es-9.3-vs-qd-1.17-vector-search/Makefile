@@ -74,6 +74,7 @@ help:
 	@echo "  JINGRA_VERSION=<text>     optional; defaults to image tag after last ':'"
 	@echo "  LINES=<n>                 optional; tail limit for jingra-load-logs / jingra-eval-logs"
 	@echo "  NAMESPACE=<ns>            Kubernetes namespace (default: default)"
+	@echo "  K8S_VARS=<path>           optional; sizing YAML for k8s-apply (default: variables/k8s.yml; needs yq, envsubst)"
 	@echo "  QUERY_DUMP_REMOTE=<path>  path in pod for copy-query-dumps"
 	@echo "  QUERY_DUMP_LOCAL=<path>   host directory for copy-query-dumps"
 	@echo "  EVAL_POD=<name>           pod override for copy-query-dumps"
