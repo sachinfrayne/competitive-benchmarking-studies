@@ -103,5 +103,7 @@ k8s-wait-ready:
 	kubectl wait --for=condition=ready pod -l app=qdrant --timeout=$(KUBECTL_WAIT_TIMEOUT) || true
 
 k8s-delete: connect-k8s
+	@kubectl delete job jingra-load jingra-eval -n $(NAMESPACE) --ignore-not-found
 	@kubectl delete statefulset qdrant -n $(NAMESPACE) --ignore-not-found
+	@kubectl delete pvc -l app=qdrant -n $(NAMESPACE) --ignore-not-found
 	@kubectl delete -f $(STACK_DIR)k8s/ --ignore-not-found
