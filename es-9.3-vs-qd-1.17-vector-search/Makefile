@@ -46,6 +46,8 @@ help:
 	@echo "  terraform-plan"
 	@echo "  terraform-apply"
 	@echo "  terraform-destroy"
+	@echo "    Uses secrets/terraform.tfvars and variables/terraform.tfvars; init copies"
+	@echo "    infra/terraform/gke-engine-root-variables.tf into engines/<stack>/terraform/."
 	@echo ""
 	@echo "Kubernetes cluster:"
 	@echo "  k8s-apply"
