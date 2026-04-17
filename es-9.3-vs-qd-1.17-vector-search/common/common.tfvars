@@ -1,0 +1,9 @@
+jingra_pool_disk_size_gb = 50
+jingra_pool_machine_type = "e2-standard-8"
+jingra_pool_node_count = 1
+main_pool_disk_size_gb = 100
+main_pool_machine_type = "n2d-standard-16"
+main_pool_node_count = 6
+ui_pool_disk_size_gb = 50
+ui_pool_machine_type = "e2-standard-8"
+ui_pool_node_count = 1
