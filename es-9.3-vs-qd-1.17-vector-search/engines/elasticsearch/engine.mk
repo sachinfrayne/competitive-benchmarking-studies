@@ -48,8 +48,22 @@ k8s-apply: secrets-create
 		kubectl wait --for=condition=ready pod -l control-plane=elastic-operator -n elastic-system --timeout=120s || true; \
 	fi
 	$(KUBECTL_APPLY_K8S_FROM_VARS)
-	kubectl wait --for=condition=ready pod -l common.k8s.elastic.co/type=elasticsearch --timeout=600s || true
-	kubectl wait --for=condition=ready pod -l common.k8s.elastic.co/type=kibana --timeout=600s || true
+	@set -euo pipefail; \
+	NS="$(or $(NAMESPACE),default)"; \
+	i=0; \
+	until kubectl get pods -n "$$NS" -l common.k8s.elastic.co/type=elasticsearch -o name 2>/dev/null | grep -q .; do \
+		i=$$((i+1)); \
+		if [ "$$i" -ge 200 ]; then echo >&2 "ERROR: Timed out waiting for Elasticsearch pods (try: kubectl describe elasticsearch es-cluster -n $$NS)"; exit 1; fi; \
+		sleep 3; \
+	done; \
+	kubectl wait --for=condition=ready pod -n "$$NS" -l common.k8s.elastic.co/type=elasticsearch --timeout=600s; \
+	i=0; \
+	until kubectl get pods -n "$$NS" -l common.k8s.elastic.co/type=kibana -o name 2>/dev/null | grep -q .; do \
+		i=$$((i+1)); \
+		if [ "$$i" -ge 200 ]; then echo >&2 "ERROR: Timed out waiting for Kibana pods"; exit 1; fi; \
+		sleep 3; \
+	done; \
+	kubectl wait --for=condition=ready pod -n "$$NS" -l common.k8s.elastic.co/type=kibana --timeout=600s
 
 k8s-delete: connect-k8s
 	@kubectl delete kibana es-cluster -n $(NAMESPACE) --ignore-not-found
