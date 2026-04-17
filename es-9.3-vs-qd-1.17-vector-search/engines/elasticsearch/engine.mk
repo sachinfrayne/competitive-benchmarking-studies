@@ -40,9 +40,27 @@ define UI_CREDENTIAL_LINES
 
 endef
 
-.PHONY: k8s-apply k8s-apply-manifests k8s-wait-ready k8s-delete logs-ui
+.PHONY: k8s-apply k8s-apply-manifests k8s-wait-ready k8s-post-apply k8s-delete logs-ui
 
-k8s-apply: secrets-create k8s-apply-manifests k8s-wait-ready
+k8s-apply: secrets-create k8s-apply-manifests k8s-wait-ready k8s-post-apply
+
+k8s-post-apply:
+	@echo "Updating jingra-credentials with current Elasticsearch password..."
+	@NS="$(or $(NAMESPACE),default)"; \
+	if kubectl get secret es-cluster-es-elastic-user --namespace="$$NS" >/dev/null 2>&1; then \
+		ES_PASS=$$(kubectl get secret es-cluster-es-elastic-user --namespace="$$NS" -o jsonpath='{.data.elastic}' | base64 -d); \
+		kubectl create secret generic jingra-credentials \
+			--from-literal=ENGINE_PASSWORD="$$ES_PASS" \
+			--namespace="$$NS" \
+			--dry-run=client -o yaml | kubectl apply -f -; \
+		echo "✓ jingra-credentials updated"; \
+		echo "Activating Elasticsearch trial license..."; \
+		kubectl run -i --rm --restart=Never curl-trial --image=curlimages/curl:latest -- \
+			curl -k -u "elastic:$$ES_PASS" -X POST "https://es-cluster-es-http.$$NS.svc:9200/_license/start_trial?acknowledge=true" 2>/dev/null || true; \
+		echo "✓ Trial license activation attempted"; \
+	else \
+		echo "⚠ Warning: es-cluster-es-elastic-user not found"; \
+	fi
 
 k8s-apply-manifests:
 	@CRD_EXISTS=$$(kubectl get crd elasticsearches.elasticsearch.k8s.elastic.co --ignore-not-found); \
@@ -75,8 +93,10 @@ k8s-wait-ready:
 	kubectl wait --for=condition=ready pod -n "$$NS" -l common.k8s.elastic.co/type=kibana --timeout=$(KUBECTL_WAIT_TIMEOUT)
 
 k8s-delete: connect-k8s
+	@kubectl delete job jingra-load jingra-eval -n $(NAMESPACE) --ignore-not-found
 	@kubectl delete kibana es-cluster -n $(NAMESPACE) --ignore-not-found
 	@kubectl delete elasticsearch es-cluster -n $(NAMESPACE) --ignore-not-found
+	@kubectl delete pvc -l elasticsearch.k8s.elastic.co/cluster-name=es-cluster -n $(NAMESPACE) --ignore-not-found
 	@kubectl delete -f $(STACK_DIR)k8s/ --ignore-not-found
 
 logs-ui: connect-k8s
