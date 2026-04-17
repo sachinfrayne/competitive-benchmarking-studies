@@ -1,9 +1,14 @@
 .PHONY: jingra-load jingra-load-stop jingra-eval jingra-eval-stop
 
+JINGRA_CONFIG ?= $(STACK_DIR)jingra.yml
+JINGRA_SCHEMAS_DIR ?= $(STACK_DIR)schemas
+JINGRA_QUERIES_DIR ?= $(STACK_DIR)queries
+
 define APPLY_JINGRA_CONFIG
-	kubectl create configmap jingra-config --from-file=jingra.yaml=jingra.yml -n default --dry-run=client -o yaml | kubectl apply -f -
-	kubectl create configmap jingra-schemas --from-file=wiki-dpr-es-768-knn.json=schemas/wiki-dpr-es-768-knn.json -n default --dry-run=client -o yaml | kubectl apply -f -
-	kubectl create configmap jingra-queries --from-file=wiki-dpr-es-768-knn.json=queries/wiki-dpr-es-768-knn.json -n default --dry-run=client -o yaml | kubectl apply -f -
+	@NS="$(or $(NAMESPACE),default)"; \
+	kubectl create configmap jingra-config --from-file=jingra.yaml="$(JINGRA_CONFIG)" -n "$$NS" --dry-run=client -o yaml | kubectl apply -f -; \
+	kubectl create configmap jingra-schemas --from-file="$(JINGRA_SCHEMAS_DIR)" -n "$$NS" --dry-run=client -o yaml | kubectl apply -f -; \
+	kubectl create configmap jingra-queries --from-file="$(JINGRA_QUERIES_DIR)" -n "$$NS" --dry-run=client -o yaml | kubectl apply -f -; \
 	kubectl apply -f $(REPO_ROOT)/k8s/jingra-datasets-pvc.yml
 endef
 

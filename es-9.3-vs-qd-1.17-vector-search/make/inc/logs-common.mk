@@ -1,4 +1,4 @@
-.PHONY: jingra-load-logs logs-eval copy-query-dumps metrics
+.PHONY: jingra-load-logs jingra-eval-logs logs-eval copy-query-dumps metrics
 
 metrics: connect-k8s
 	@kubectl top pods --all-namespaces 2>/dev/null || echo >&2 "Note: metrics server not available or pods not ready"
@@ -19,7 +19,7 @@ jingra-load-logs: connect-k8s
 		kubectl logs -f $$POD; \
 	fi
 
-logs-eval: connect-k8s
+jingra-eval-logs: connect-k8s
 	@POD=$$(kubectl get pods -l job-name=jingra-eval --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}' 2>/dev/null); \
 	if [ -z "$$POD" ]; then \
 		POD=$$(kubectl get pods -l job-name=jingra-eval --sort-by=.metadata.creationTimestamp -o jsonpath='{.items[-1].metadata.name}' 2>/dev/null); \
@@ -33,6 +33,8 @@ logs-eval: connect-k8s
 	else \
 		kubectl logs -f $$POD; \
 	fi
+
+logs-eval: jingra-eval-logs
 
 copy-query-dumps: connect-k8s
 	@NS="$(or $(NAMESPACE),default)"; \

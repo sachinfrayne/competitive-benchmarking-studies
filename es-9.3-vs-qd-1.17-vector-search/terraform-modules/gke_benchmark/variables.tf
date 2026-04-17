@@ -67,7 +67,8 @@ variable "enable_ui_node_pool" {
 
 variable "ui_pool_name" {
   type        = string
-  description = "Node pool name when enable_ui_node_pool is true"
+  description = "Node pool name when enable_ui_node_pool is true (ignored when false)"
+  default     = "ui-nodepool"
 }
 
 variable "ui_pool_node_count" {

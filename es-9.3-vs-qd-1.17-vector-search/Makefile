@@ -9,10 +9,14 @@ STACK_TARGETS := \
 	k8s-apply k8s-delete \
 	connect-k8s secrets-create \
 	jingra-load jingra-load-stop jingra-load-logs \
-	jingra-eval jingra-eval-stop logs-eval copy-query-dumps \
+	jingra-eval jingra-eval-stop jingra-eval-logs copy-query-dumps \
 	status metrics logs-engine connect-ui logs-ui
 
-.PHONY: help analyze analyze-clean elasticsearch qdrant $(STACK_TARGETS)
+# No-op goal so `make <stack> logs-eval` still satisfies the extra goal; work runs in stack.mk.
+logs-eval:
+	@:
+
+.PHONY: help analyze analyze-clean elasticsearch qdrant $(STACK_TARGETS) logs-eval
 
 .DEFAULT_GOAL := help
 
@@ -54,7 +58,7 @@ help:
 	@echo "Jingra — evaluation (needs JINGRA_IMAGE on start):"
 	@echo "  jingra-eval"
 	@echo "  jingra-eval-stop"
-	@echo "  logs-eval"
+	@echo "  jingra-eval-logs"
 	@echo "  copy-query-dumps"
 	@echo ""
 	@echo "Cluster status and observability:"
@@ -67,7 +71,7 @@ help:
 	@echo "Variables (pass on the make command line with any stack target):"
 	@echo "  JINGRA_IMAGE=<ref>        required for jingra-load / jingra-eval"
 	@echo "  JINGRA_VERSION=<text>     optional; defaults to image tag after last ':'"
-	@echo "  LINES=<n>                 optional; tail limit for jingra-load-logs / logs-eval"
+	@echo "  LINES=<n>                 optional; tail limit for jingra-load-logs / jingra-eval-logs"
 	@echo "  NAMESPACE=<ns>            Kubernetes namespace (default: default)"
 	@echo "  QUERY_DUMP_REMOTE=<path>  path in pod for copy-query-dumps"
 	@echo "  QUERY_DUMP_LOCAL=<path>   host directory for copy-query-dumps"
@@ -89,11 +93,14 @@ $(ANALYZE_OUTPUT_DIR):
 	@mkdir -p "$@"
 
 analyze: analyze-clean | $(ANALYZE_OUTPUT_DIR)
-	$(call require_env,RESULTS_ES_URL)
-	$(call require_env,RESULTS_ES_USER)
-	$(call require_env,RESULTS_ES_PASSWORD)
-	$(call require_env,JINGRA_IMAGE)
-	@docker run --rm \
+	@set -euo pipefail; \
+	if [ -f "$(REPO_ROOT)secrets/.secrets.env" ]; then \
+		set -a; source "$(REPO_ROOT)secrets/.secrets.env"; set +a; \
+	fi; \
+	for var in RESULTS_ES_URL RESULTS_ES_USER RESULTS_ES_PASSWORD JINGRA_IMAGE; do \
+		if [ -z "$${!var:-}" ]; then echo "ERROR: $$var not set" >&2; exit 1; fi; \
+	done; \
+	docker run --rm \
 		-v "$(ANALYZE_DIR)/jingra.yml:/config/jingra.yml:ro" \
 		-v "$(ANALYZE_OUTPUT_DIR):/output" \
 		-e RESULTS_ES_URL \
@@ -104,13 +111,31 @@ analyze: analyze-clean | $(ANALYZE_OUTPUT_DIR)
 
 elasticsearch:
 	@targets="$(filter-out $@,$(MAKECMDGOALS))"; \
-	if [ -z "$$targets" ]; then targets="help"; fi; \
-	$(MAKE) -C elasticsearch $$targets
+	if [ -z "$$targets" ]; then \
+		$(MAKE) help; \
+		exit 0; \
+	fi; \
+	if echo "$$targets" | tr ' ' '\n' | grep -qx 'help'; then \
+		$(MAKE) help; \
+	fi; \
+	fwd="$$(echo "$$targets" | tr ' ' '\n' | grep -vx 'help' | tr '\n' ' ')"; \
+	if [ -n "$$fwd" ]; then \
+		$(MAKE) -f "$(REPO_ROOT)make/stack.mk" STACK=elasticsearch $$fwd; \
+	fi
 
 qdrant:
 	@targets="$(filter-out $@,$(MAKECMDGOALS))"; \
-	if [ -z "$$targets" ]; then targets="help"; fi; \
-	$(MAKE) -C qdrant $$targets
+	if [ -z "$$targets" ]; then \
+		$(MAKE) help; \
+		exit 0; \
+	fi; \
+	if echo "$$targets" | tr ' ' '\n' | grep -qx 'help'; then \
+		$(MAKE) help; \
+	fi; \
+	fwd="$$(echo "$$targets" | tr ' ' '\n' | grep -vx 'help' | tr '\n' ' ')"; \
+	if [ -n "$$fwd" ]; then \
+		$(MAKE) -f "$(REPO_ROOT)make/stack.mk" STACK=qdrant $$fwd; \
+	fi
 
 $(STACK_TARGETS):
 	@:
