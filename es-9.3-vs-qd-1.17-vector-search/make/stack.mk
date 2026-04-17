@@ -8,8 +8,8 @@ ifeq ($(strip $(STACK)),)
 $(error STACK is required (e.g. STACK=elasticsearch or STACK=qdrant))
 endif
 
-STACK_DIR := $(REPO_ROOT)/$(STACK)/
-ENGINE_ENV := $(REPO_ROOT)/variables/$(STACK).env
+STACK_DIR := $(REPO_ROOT)/engines/$(STACK)/
+ENGINE_ENV := $(REPO_ROOT)/infra/variables/$(STACK).env
 
 -include $(ENGINE_ENV)
 
@@ -116,7 +116,7 @@ ENGINE_SOURCE_ENV := if [[ -f "$(STACK_DIR).qdrant-api-key.env" ]]; then set -a;
 
 define ENGINE_EXTRA_SECRETS
 	if [[ -z "$${QDRANT_API_KEY:-}" ]]; then \
-		echo >&2 "ERROR: QDRANT_API_KEY is not set. Add qdrant/.qdrant-api-key.env or run \`make ensure-qdrant-api-key-in-env\`."; \
+		echo >&2 "ERROR: QDRANT_API_KEY is not set. Add engines/qdrant/.qdrant-api-key.env or run \`make ensure-qdrant-api-key-in-env\`."; \
 		exit 1; \
 	fi; \
 	command -v openssl >/dev/null 2>&1 || { echo >&2 "ERROR: openssl is required for Qdrant TLS material"; exit 1; }; \
