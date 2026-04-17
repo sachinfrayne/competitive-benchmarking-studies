@@ -6,7 +6,12 @@ JINGRA_QUERIES_DIR ?= $(STACK_DIR)queries
 
 define APPLY_JINGRA_CONFIG
 	@NS="$(or $(NAMESPACE),default)"; \
-	kubectl create configmap jingra-config --from-file=jingra.yaml="$(JINGRA_CONFIG)" -n "$$NS" --dry-run=client -o yaml | kubectl apply -f -; \
+	TMP="$$(mktemp)"; \
+	trap 'rm -f "$$TMP"' EXIT; \
+	command -v yq >/dev/null 2>&1 || { echo >&2 "ERROR: yq (https://github.com/mikefarah/yq) is required"; exit 1; }; \
+	rid="$$(yq '.run_id' "$(REPO_ROOT)/variables/run_id.yml")"; \
+	yq --arg rid "$$rid" '.evaluation.run_id = $$rid' "$(JINGRA_CONFIG)" >"$$TMP"; \
+	kubectl create configmap jingra-config --from-file=jingra.yaml="$$TMP" -n "$$NS" --dry-run=client -o yaml | kubectl apply -f -; \
 	kubectl create configmap jingra-schemas --from-file="$(JINGRA_SCHEMAS_DIR)" -n "$$NS" --dry-run=client -o yaml | kubectl apply -f -; \
 	kubectl create configmap jingra-queries --from-file="$(JINGRA_QUERIES_DIR)" -n "$$NS" --dry-run=client -o yaml | kubectl apply -f -; \
 	kubectl apply -f $(REPO_ROOT)/infra/k8s/jingra-datasets-pvc.yml

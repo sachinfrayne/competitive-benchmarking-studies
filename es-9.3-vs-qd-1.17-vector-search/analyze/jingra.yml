@@ -1,6 +1,4 @@
 analysis:
-  run_id: "es-9.3-vs-qd-1.17-vector-search-5"
-
   engines:
     - elasticsearch
     - qdrant

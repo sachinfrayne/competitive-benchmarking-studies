@@ -53,12 +53,10 @@ help:
 	@echo "  k8s-apply"
 	@echo "  k8s-delete"
 	@echo ""
-	@echo "Jingra — data load (needs JINGRA_IMAGE on start):"
+	@echo "Jingra — load / eval (needs JINGRA_IMAGE; merges evaluation.run_id from variables/run_id.yml via yq):"
 	@echo "  jingra-load"
 	@echo "  jingra-load-stop"
 	@echo "  jingra-load-logs"
-	@echo ""
-	@echo "Jingra — evaluation (needs JINGRA_IMAGE on start):"
 	@echo "  jingra-eval"
 	@echo "  jingra-eval-stop"
 	@echo "  jingra-eval-logs"
@@ -76,7 +74,7 @@ help:
 	@echo "  JINGRA_VERSION=<text>     optional; defaults to image tag after last ':'"
 	@echo "  LINES=<n>                 optional; tail limit for jingra-load-logs / jingra-eval-logs"
 	@echo "  NAMESPACE=<ns>            Kubernetes namespace (default: default)"
-	@echo "  K8S_VARS=<path>           optional; sizing YAML for k8s-apply (default: variables/k8s.yml; needs envsubst)"
+	@echo "  K8S_VARS=<path>           optional; sizing YAML for k8s-apply (default: variables/k8s.yml; needs envsubst + yq)"
 	@echo "  QUERY_DUMP_REMOTE=<path>  path in pod for copy-query-dumps"
 	@echo "  QUERY_DUMP_LOCAL=<path>   host directory for copy-query-dumps"
 	@echo "  EVAL_POD=<name>           pod override for copy-query-dumps"
@@ -84,6 +82,7 @@ help:
 	@echo "Post-run analysis (not stack-prefixed):"
 	@echo "  make analyze JINGRA_IMAGE=<ref>"
 	@echo "    Clears analyze/output/, runs Jingra analyze in Docker."
+	@echo "    Injects analysis.run_id from variables/run_id.yml (needs mikefarah yq v4)."
 	@echo "    Needs RESULTS_ES_URL, RESULTS_ES_USER, RESULTS_ES_PASSWORD (env or secrets/.secrets.env)."
 	@echo "    Writes CSVs under analyze/output/ (recall, summary, throughput comparisons)."
 	@echo "  make analyze-clean"
@@ -104,8 +103,13 @@ analyze: analyze-clean | $(ANALYZE_OUTPUT_DIR)
 	for var in RESULTS_ES_URL RESULTS_ES_USER RESULTS_ES_PASSWORD JINGRA_IMAGE; do \
 		if [ -z "$${!var:-}" ]; then echo "ERROR: $$var not set" >&2; exit 1; fi; \
 	done; \
+	TMP="$$(mktemp)"; \
+	trap 'rm -f "$$TMP"' EXIT; \
+	command -v yq >/dev/null 2>&1 || { echo >&2 "ERROR: yq (https://github.com/mikefarah/yq) is required"; exit 1; }; \
+	rid="$$(yq '.run_id' "$(REPO_ROOT)variables/run_id.yml")"; \
+	yq --arg rid "$$rid" '.analysis.run_id = $$rid' "$(ANALYZE_DIR)/jingra.yml" >"$$TMP"; \
 	docker run --rm \
-		-v "$(ANALYZE_DIR)/jingra.yml:/config/jingra.yml:ro" \
+		-v "$$TMP:/config/jingra.yml:ro" \
 		-v "$(ANALYZE_OUTPUT_DIR):/output" \
 		-e RESULTS_ES_URL \
 		-e RESULTS_ES_USER \
