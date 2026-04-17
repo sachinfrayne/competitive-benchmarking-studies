@@ -1,3 +1,15 @@
+# Operational settings (gke-connect, stack-status, stack-access)
+GKE_CLUSTER_NAME := qdrant-benchmark
+
+STACK_ENGINE_LABEL := Qdrant
+
+ENGINE_POD_SELECTOR := app=qdrant
+SERVICE_NAMES := qdrant-service qdrant-benchmark qdrant-headless
+
+ENGINE_LOG_POD_SELECTOR := app=qdrant
+UI_SERVICE_NAME := qdrant-service
+UI_URL_TEMPLATE := URL:      https://$${EXTERNAL_IP}:6333/dashboard
+
 .PHONY: ensure-qdrant-api-key-in-env k8s-apply k8s-delete
 
 ensure-qdrant-api-key-in-env:

@@ -1,3 +1,17 @@
+# Operational settings (gke-connect, stack-status, stack-access)
+GKE_CLUSTER_NAME := elasticsearch-benchmark
+ECK_VERSION := 3.1.0
+
+STACK_ENGINE_LABEL := Elasticsearch
+
+ENGINE_POD_SELECTOR := common.k8s.elastic.co/type=elasticsearch
+UI_POD_SELECTOR := common.k8s.elastic.co/type=kibana
+SERVICE_LABEL_SELECTOR := common.k8s.elastic.co/type
+
+ENGINE_LOG_POD_SELECTOR := common.k8s.elastic.co/type=elasticsearch
+UI_SERVICE_NAME := es-cluster-kb-http
+UI_URL_TEMPLATE := URL:      https://$${EXTERNAL_IP}:5601
+
 define ENGINE_CREDENTIALS_UPSERT
 	if kubectl get secret es-cluster-es-elastic-user --namespace="$$NS" >/dev/null 2>&1; then \
 		ES_PASS=$$(kubectl get secret es-cluster-es-elastic-user --namespace="$$NS" -o jsonpath='{.data.elastic}' | base64 -d); \

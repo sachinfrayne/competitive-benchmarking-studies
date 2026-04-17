@@ -4,6 +4,8 @@ REPO_ROOT := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 ANALYZE_DIR := $(REPO_ROOT)analyze
 ANALYZE_OUTPUT_DIR := $(ANALYZE_DIR)/output
 
+ENGINES := elasticsearch qdrant
+
 STACK_TARGETS := \
 	terraform-plan terraform-apply terraform-destroy \
 	k8s-apply k8s-delete \
@@ -16,7 +18,9 @@ STACK_TARGETS := \
 logs-eval:
 	@:
 
-.PHONY: help analyze analyze-clean elasticsearch qdrant $(STACK_TARGETS) logs-eval
+# Spell stacks literally for shell tab completion (zsh/bash grep this file; they do not expand $(ENGINES)).
+# When you add engines/*/engine.mk, add the name here too (alongside $(ENGINES), duplication is harmless).
+.PHONY: help analyze analyze-clean elasticsearch qdrant $(STACK_TARGETS)
 
 .DEFAULT_GOAL := help
 
@@ -32,11 +36,8 @@ help:
 	@echo ""
 	@echo "Pattern:  make <stack> <target>"
 	@echo ""
-	@echo "Stacks (add a row here when you add an engine under its own directory):"
-	@echo "  prefix   directory"
-	@echo "  ------   ---------"
-	@echo "  elasticsearch engines/elasticsearch/"
-	@echo "  qdrant   engines/qdrant/"
+	@echo "Stacks: any directory under engines/ that contains engine.mk"
+	@echo "Discovered now: $(ENGINES)"
 	@echo ""
 	@echo "Example:  make elasticsearch k8s-apply"
 	@echo "          make qdrant jingra-eval JINGRA_IMAGE=registry.example.com/jingra:36"
@@ -109,7 +110,8 @@ analyze: analyze-clean | $(ANALYZE_OUTPUT_DIR)
 		"$(JINGRA_IMAGE)" \
 		analyze /config/jingra.yml
 
-elasticsearch:
+# Literal stack names = same idea as .PHONY line (tab completion grep); add new stacks here when you add engines/*/engine.mk.
+elasticsearch qdrant:
 	@targets="$(filter-out $@,$(MAKECMDGOALS))"; \
 	if [ -z "$$targets" ]; then \
 		$(MAKE) help; \
@@ -120,21 +122,7 @@ elasticsearch:
 	fi; \
 	fwd="$$(echo "$$targets" | tr ' ' '\n' | grep -vx 'help' | tr '\n' ' ')"; \
 	if [ -n "$$fwd" ]; then \
-		$(MAKE) -f "$(REPO_ROOT)make/stack.mk" STACK=elasticsearch $$fwd; \
-	fi
-
-qdrant:
-	@targets="$(filter-out $@,$(MAKECMDGOALS))"; \
-	if [ -z "$$targets" ]; then \
-		$(MAKE) help; \
-		exit 0; \
-	fi; \
-	if echo "$$targets" | tr ' ' '\n' | grep -qx 'help'; then \
-		$(MAKE) help; \
-	fi; \
-	fwd="$$(echo "$$targets" | tr ' ' '\n' | grep -vx 'help' | tr '\n' ' ')"; \
-	if [ -n "$$fwd" ]; then \
-		$(MAKE) -f "$(REPO_ROOT)make/stack.mk" STACK=qdrant $$fwd; \
+		$(MAKE) -f "$(REPO_ROOT)make/stack.mk" STACK=$@ $$fwd; \
 	fi
 
 $(STACK_TARGETS):
