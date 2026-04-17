@@ -1,5 +1,7 @@
 .PHONY: jingra-load jingra-load-stop jingra-eval jingra-eval-stop
 
+include $(REPO_ROOT)/make/run-id.mk
+
 JINGRA_CONFIG ?= $(STACK_DIR)jingra.yml
 JINGRA_SCHEMAS_DIR ?= $(STACK_DIR)schemas
 JINGRA_QUERIES_DIR ?= $(STACK_DIR)queries
@@ -8,9 +10,7 @@ define APPLY_JINGRA_CONFIG
 	@NS="$(or $(NAMESPACE),default)"; \
 	TMP="$$(mktemp)"; \
 	trap 'rm -f "$$TMP"' EXIT; \
-	command -v yq >/dev/null 2>&1 || { echo >&2 "ERROR: yq (https://github.com/mikefarah/yq) is required"; exit 1; }; \
-	rid="$$(yq '.run_id' "$(REPO_ROOT)/variables/run_id.yml")"; \
-	yq --arg rid "$$rid" '.evaluation.run_id = $$rid' "$(JINGRA_CONFIG)" >"$$TMP"; \
+	$(call MERGE_RUN_ID_TO_FILE,$(JINGRA_CONFIG),$$TMP,.evaluation.run_id); \
 	kubectl create configmap jingra-config --from-file=jingra.yaml="$$TMP" -n "$$NS" --dry-run=client -o yaml | kubectl apply -f -; \
 	kubectl create configmap jingra-schemas --from-file="$(JINGRA_SCHEMAS_DIR)" -n "$$NS" --dry-run=client -o yaml | kubectl apply -f -; \
 	kubectl create configmap jingra-queries --from-file="$(JINGRA_QUERIES_DIR)" -n "$$NS" --dry-run=client -o yaml | kubectl apply -f -; \

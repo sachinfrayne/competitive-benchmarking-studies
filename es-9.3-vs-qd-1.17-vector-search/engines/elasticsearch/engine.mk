@@ -2,6 +2,11 @@
 GKE_CLUSTER_NAME := elasticsearch-benchmark
 ECK_VERSION := 3.1.0
 
+# Timeout configuration for k8s-wait-ready
+MAX_WAIT_ATTEMPTS ?= 200
+WAIT_INTERVAL_SECS ?= 3
+KUBECTL_WAIT_TIMEOUT ?= 600s
+
 STACK_ENGINE_LABEL := Elasticsearch
 
 ENGINE_POD_SELECTOR := common.k8s.elastic.co/type=elasticsearch
@@ -35,9 +40,11 @@ define UI_CREDENTIAL_LINES
 
 endef
 
-.PHONY: k8s-apply k8s-delete logs-ui
+.PHONY: k8s-apply k8s-apply-manifests k8s-wait-ready k8s-delete logs-ui
 
-k8s-apply: secrets-create
+k8s-apply: secrets-create k8s-apply-manifests k8s-wait-ready
+
+k8s-apply-manifests:
 	@CRD_EXISTS=$$(kubectl get crd elasticsearches.elasticsearch.k8s.elastic.co --ignore-not-found); \
 	if [ -z "$$CRD_EXISTS" ]; then \
 		kubectl create -f https://download.elastic.co/downloads/eck/$(ECK_VERSION)/crds.yaml; \
@@ -48,22 +55,24 @@ k8s-apply: secrets-create
 		kubectl wait --for=condition=ready pod -l control-plane=elastic-operator -n elastic-system --timeout=120s || true; \
 	fi
 	$(KUBECTL_APPLY_K8S_FROM_VARS)
+
+k8s-wait-ready:
 	@set -euo pipefail; \
 	NS="$(or $(NAMESPACE),default)"; \
 	i=0; \
 	until kubectl get pods -n "$$NS" -l common.k8s.elastic.co/type=elasticsearch -o name 2>/dev/null | grep -q .; do \
 		i=$$((i+1)); \
-		if [ "$$i" -ge 200 ]; then echo >&2 "ERROR: Timed out waiting for Elasticsearch pods (try: kubectl describe elasticsearch es-cluster -n $$NS)"; exit 1; fi; \
-		sleep 3; \
+		if [ "$$i" -ge $(MAX_WAIT_ATTEMPTS) ]; then echo >&2 "ERROR: Timed out waiting for Elasticsearch pods (try: kubectl describe elasticsearch es-cluster -n $$NS)"; exit 1; fi; \
+		sleep $(WAIT_INTERVAL_SECS); \
 	done; \
-	kubectl wait --for=condition=ready pod -n "$$NS" -l common.k8s.elastic.co/type=elasticsearch --timeout=600s; \
+	kubectl wait --for=condition=ready pod -n "$$NS" -l common.k8s.elastic.co/type=elasticsearch --timeout=$(KUBECTL_WAIT_TIMEOUT); \
 	i=0; \
 	until kubectl get pods -n "$$NS" -l common.k8s.elastic.co/type=kibana -o name 2>/dev/null | grep -q .; do \
 		i=$$((i+1)); \
-		if [ "$$i" -ge 200 ]; then echo >&2 "ERROR: Timed out waiting for Kibana pods"; exit 1; fi; \
-		sleep 3; \
+		if [ "$$i" -ge $(MAX_WAIT_ATTEMPTS) ]; then echo >&2 "ERROR: Timed out waiting for Kibana pods"; exit 1; fi; \
+		sleep $(WAIT_INTERVAL_SECS); \
 	done; \
-	kubectl wait --for=condition=ready pod -n "$$NS" -l common.k8s.elastic.co/type=kibana --timeout=600s
+	kubectl wait --for=condition=ready pod -n "$$NS" -l common.k8s.elastic.co/type=kibana --timeout=$(KUBECTL_WAIT_TIMEOUT)
 
 k8s-delete: connect-k8s
 	@kubectl delete kibana es-cluster -n $(NAMESPACE) --ignore-not-found

@@ -1,6 +1,9 @@
 # Operational settings (gke-connect, stack-status, stack-access)
 GKE_CLUSTER_NAME := qdrant-benchmark
 
+# Timeout configuration for k8s-wait-ready
+KUBECTL_WAIT_TIMEOUT ?= 600s
+
 STACK_ENGINE_LABEL := Qdrant
 
 ENGINE_POD_SELECTOR := app=qdrant
@@ -10,7 +13,7 @@ ENGINE_LOG_POD_SELECTOR := app=qdrant
 UI_SERVICE_NAME := qdrant-service
 UI_URL_TEMPLATE := URL:      https://$${EXTERNAL_IP}:6333/dashboard
 
-.PHONY: ensure-qdrant-api-key-in-env k8s-apply k8s-delete
+.PHONY: ensure-qdrant-api-key-in-env k8s-apply k8s-apply-manifests k8s-wait-ready k8s-delete
 
 ensure-qdrant-api-key-in-env:
 	@set -euo pipefail; \
@@ -91,9 +94,13 @@ define UI_CREDENTIAL_LINES
 
 endef
 
-k8s-apply: secrets-create
+k8s-apply: secrets-create k8s-apply-manifests k8s-wait-ready
+
+k8s-apply-manifests:
 	$(KUBECTL_APPLY_K8S_FROM_VARS)
-	kubectl wait --for=condition=ready pod -l app=qdrant --timeout=600s || true
+
+k8s-wait-ready:
+	kubectl wait --for=condition=ready pod -l app=qdrant --timeout=$(KUBECTL_WAIT_TIMEOUT) || true
 
 k8s-delete: connect-k8s
 	@kubectl delete statefulset qdrant -n $(NAMESPACE) --ignore-not-found

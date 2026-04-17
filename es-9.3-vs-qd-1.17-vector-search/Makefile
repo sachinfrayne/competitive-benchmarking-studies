@@ -4,6 +4,8 @@ REPO_ROOT := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 ANALYZE_DIR := $(REPO_ROOT)analyze
 ANALYZE_OUTPUT_DIR := $(ANALYZE_DIR)/output
 
+include $(REPO_ROOT)make/run-id.mk
+
 ENGINES := elasticsearch qdrant
 
 STACK_TARGETS := \
@@ -105,9 +107,7 @@ analyze: analyze-clean | $(ANALYZE_OUTPUT_DIR)
 	done; \
 	TMP="$$(mktemp)"; \
 	trap 'rm -f "$$TMP"' EXIT; \
-	command -v yq >/dev/null 2>&1 || { echo >&2 "ERROR: yq (https://github.com/mikefarah/yq) is required"; exit 1; }; \
-	rid="$$(yq '.run_id' "$(REPO_ROOT)variables/run_id.yml")"; \
-	yq --arg rid "$$rid" '.analysis.run_id = $$rid' "$(ANALYZE_DIR)/jingra.yml" >"$$TMP"; \
+	$(call MERGE_RUN_ID_TO_FILE,$(ANALYZE_DIR)/jingra.yml,$$TMP,.analysis.run_id); \
 	docker run --rm \
 		-v "$$TMP:/config/jingra.yml:ro" \
 		-v "$(ANALYZE_OUTPUT_DIR):/output" \

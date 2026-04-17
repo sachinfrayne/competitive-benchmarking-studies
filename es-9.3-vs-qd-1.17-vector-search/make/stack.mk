@@ -14,6 +14,11 @@ ifeq ($(wildcard $(STACK_DIR)engine.mk),)
 $(error Unknown stack '$(STACK)': missing $(STACK_DIR)engine.mk)
 endif
 
+# Validate required tools are installed
+REQUIRED_TOOLS := kubectl gcloud yq envsubst
+$(foreach tool,$(REQUIRED_TOOLS),\
+  $(if $(shell which $(tool)),,$(error "$(tool)" not found in PATH)))
+
 NAMESPACE ?= default
 
 # Jingra config is engine-local

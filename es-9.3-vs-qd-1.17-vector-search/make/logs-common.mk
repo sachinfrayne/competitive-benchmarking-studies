@@ -1,38 +1,32 @@
 .PHONY: jingra-load-logs jingra-eval-logs logs-eval copy-query-dumps metrics
 
+# Shared function to follow logs from a Kubernetes job
+# Args: $(1)=job name
+define FOLLOW_JOB_LOGS
+	@POD=$$(kubectl get pods -l job-name=$(1) --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}' 2>/dev/null); \
+	if [ -z "$$POD" ]; then \
+		POD=$$(kubectl get pods -l job-name=$(1) --sort-by=.metadata.creationTimestamp -o jsonpath='{.items[-1].metadata.name}' 2>/dev/null); \
+	fi; \
+	if [ -z "$$POD" ]; then \
+		echo >&2 "ERROR: No pods found for job $(1)"; \
+		exit 1; \
+	fi; \
+	if [ -n "$(LINES)" ]; then \
+		kubectl logs -f --tail=$(LINES) $$POD; \
+	else \
+		kubectl logs -f $$POD; \
+	fi
+endef
+
 metrics: connect-k8s
 	@kubectl top pods --all-namespaces 2>/dev/null || echo >&2 "Note: metrics server not available or pods not ready"
 	@kubectl top nodes 2>/dev/null || echo >&2 "Note: metrics server not available"
 
 jingra-load-logs: connect-k8s
-	@POD=$$(kubectl get pods -l job-name=jingra-load --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}' 2>/dev/null); \
-	if [ -z "$$POD" ]; then \
-		POD=$$(kubectl get pods -l job-name=jingra-load --sort-by=.metadata.creationTimestamp -o jsonpath='{.items[-1].metadata.name}' 2>/dev/null); \
-	fi; \
-	if [ -z "$$POD" ]; then \
-		echo >&2 "ERROR: No load job pods found"; \
-		exit 1; \
-	fi; \
-	if [ -n "$(LINES)" ]; then \
-		kubectl logs -f --tail=$(LINES) $$POD; \
-	else \
-		kubectl logs -f $$POD; \
-	fi
+	$(call FOLLOW_JOB_LOGS,jingra-load)
 
 jingra-eval-logs: connect-k8s
-	@POD=$$(kubectl get pods -l job-name=jingra-eval --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}' 2>/dev/null); \
-	if [ -z "$$POD" ]; then \
-		POD=$$(kubectl get pods -l job-name=jingra-eval --sort-by=.metadata.creationTimestamp -o jsonpath='{.items[-1].metadata.name}' 2>/dev/null); \
-	fi; \
-	if [ -z "$$POD" ]; then \
-		echo >&2 "ERROR: No eval job pods found"; \
-		exit 1; \
-	fi; \
-	if [ -n "$(LINES)" ]; then \
-		kubectl logs -f --tail=$(LINES) $$POD; \
-	else \
-		kubectl logs -f $$POD; \
-	fi
+	$(call FOLLOW_JOB_LOGS,jingra-eval)
 
 logs-eval: jingra-eval-logs
 
