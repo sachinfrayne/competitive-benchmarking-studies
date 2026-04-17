@@ -1,5 +1,5 @@
 {
-  "name": "wiki_dpr_e5_768_knn",
+  "name": "wiki-dpr-es-768-knn",
   "template": {
     "mappings": {
       "properties": {

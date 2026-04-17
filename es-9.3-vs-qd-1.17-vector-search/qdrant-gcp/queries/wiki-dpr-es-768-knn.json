@@ -1,12 +1,12 @@
 {
-  "name": "wiki_dpr_e5_768_knn",
+  "name": "wiki-dpr-es-768-knn",
   "template": {
     "vector": "{{query_vector}}",
     "params": {
-      "hnsw_ef": "{{num_candidates}}",
+      "hnsw_ef": "{{hnsw_ef}}",
       "quantization": {
         "rescore": true,
-        "oversampling": "{{rescore}}"
+        "oversampling": "{{oversampling}}"
       }
     },
     "limit": "{{size}}",

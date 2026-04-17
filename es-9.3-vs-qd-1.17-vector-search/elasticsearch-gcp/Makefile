@@ -5,6 +5,11 @@
         status metrics logs-engine logs-ui \
         connect-k8s connect-ui
 
+SHELL := /bin/bash
+
+STACK_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+REPO_ROOT := $(abspath $(STACK_DIR)/..)
+
 # Variables
 # JINGRA_IMAGE must be provided by the user (no default). Optional: JINGRA_VERSION for pod env (defaults to suffix after last ':' in the image).
 
@@ -110,7 +115,7 @@ k8s-deploy: secrets-create
 	fi
 	@echo ""
 	@echo "4️⃣  Deploying Elasticsearch + Kibana..."
-	kubectl apply -f k8s/cluster.yml
+	kubectl apply -f k8s-cluster.yml
 	@echo ""
 	@echo "⏳ Waiting for Elasticsearch to be ready (this may take 5-10 minutes)..."
 	@echo "   - Waiting for Elasticsearch pods to be ready..."
@@ -124,12 +129,73 @@ k8s-deploy: secrets-create
 
 k8s-delete: connect-k8s
 	@echo "🗑️  Deleting Elasticsearch cluster..."
-	kubectl delete -f k8s/cluster.yml --ignore-not-found
+	kubectl delete -f k8s-cluster.yml --ignore-not-found
 	@echo "✅ Elasticsearch cluster deleted"
 
 secrets-create: connect-k8s
 	@echo "🔐 Syncing Kubernetes secrets from secrets/.secrets.env"
-	cd scripts && ./create-k8s-secrets.sh
+	@set -euo pipefail; \
+	NAMESPACE=default; \
+	SECRETS_ENV="$(REPO_ROOT)/secrets/.secrets.env"; \
+	if [[ -f "$$SECRETS_ENV" ]]; then \
+		echo "Loading credentials from $$SECRETS_ENV..."; \
+		set -a; source "$$SECRETS_ENV"; set +a; \
+	else \
+		echo "Note: $$SECRETS_ENV not found. Using environment variables only."; \
+		echo "To use secrets file: cp secrets/.secrets.env.example secrets/.secrets.env (then edit it)"; \
+		echo ""; \
+	fi; \
+	if [[ -z "$${DOCKER_USERNAME:-}" ]]; then \
+		echo "ERROR: DOCKER_USERNAME not set"; exit 1; \
+	fi; \
+	if [[ -z "$${DOCKER_PASSWORD:-}" ]]; then \
+		echo "ERROR: DOCKER_PASSWORD not set"; exit 1; \
+	fi; \
+	if [[ -z "$${DOCKER_EMAIL:-}" ]]; then \
+		echo "ERROR: DOCKER_EMAIL not set"; exit 1; \
+	fi; \
+	echo "Creating docker registry secret..."; \
+	kubectl delete secret regcred --namespace="$$NAMESPACE" --ignore-not-found; \
+	kubectl create secret docker-registry regcred \
+		--docker-server="$$DOCKER_REGISTRY" \
+		--docker-username="$$DOCKER_USERNAME" \
+		--docker-password="$$DOCKER_PASSWORD" \
+		--docker-email="$$DOCKER_EMAIL" \
+		--namespace="$$NAMESPACE"; \
+	echo "✓ Created secret: regcred"; \
+	if [[ -n "$${RESULTS_ES_PASSWORD:-}" ]]; then \
+		echo "Creating results cluster secret..."; \
+		kubectl delete secret jingra-results-cluster --namespace="$$NAMESPACE" --ignore-not-found; \
+		kubectl create secret generic jingra-results-cluster \
+			--from-literal=RESULTS_ES_URL="$$RESULTS_ES_URL" \
+			--from-literal=RESULTS_ES_USER="$$RESULTS_ES_USER" \
+			--from-literal=RESULTS_ES_PASSWORD="$$RESULTS_ES_PASSWORD" \
+			--namespace="$$NAMESPACE"; \
+		echo "✓ Created secret: jingra-results-cluster"; \
+	else \
+		echo "Note: RESULTS_ES_PASSWORD not set, skipping results cluster secret"; \
+	fi; \
+	if kubectl get secret es-cluster-es-elastic-user --namespace="$$NAMESPACE" >/dev/null 2>&1; then \
+		echo "Syncing ECK elastic user password into jingra-credentials..."; \
+		ES_PASS=$$(kubectl get secret es-cluster-es-elastic-user --namespace="$$NAMESPACE" -o jsonpath='{.data.elastic}' | base64 -d); \
+		kubectl create secret generic jingra-credentials \
+			--from-literal=ENGINE_PASSWORD="$$ES_PASS" \
+			--namespace="$$NAMESPACE" \
+			--dry-run=client -o yaml | kubectl apply -f -; \
+		echo "✓ Applied secret: jingra-credentials"; \
+	else \
+		echo "Note: es-cluster-es-elastic-user not found; skipping jingra-credentials"; \
+		echo "      (Run secrets-create again after the Elasticsearch cluster exists.)"; \
+	fi; \
+	echo "Creating dataset URLs secret..."; \
+	kubectl delete secret jingra-dataset-urls --namespace="$$NAMESPACE" --ignore-not-found; \
+	kubectl create secret generic jingra-dataset-urls \
+		--from-literal=DATASET_DATA_URL="$$DATASET_DATA_URL" \
+		--from-literal=DATASET_QUERIES_URL="$$DATASET_QUERIES_URL" \
+		--namespace="$$NAMESPACE"; \
+	echo "✓ Created secret: jingra-dataset-urls"; \
+	echo ""; \
+	echo "✅ All secrets created successfully!"
 	@echo "✅ Secrets synced"
 
 # ============================================================================
@@ -145,8 +211,8 @@ jingra-load: secrets-create connect-k8s jingra-load-stop
 	@echo "⚡ Starting data load..."
 	@echo "   1. Applying Jingra config..."
 	kubectl create configmap jingra-config --from-file=jingra.yaml=jingra.yml -n default --dry-run=client -o yaml | kubectl apply -f -
-	kubectl create configmap jingra-schemas --from-file=wiki_dpr_e5_768_knn.json=schemas/wiki_dpr_e5_768_knn.json -n default --dry-run=client -o yaml | kubectl apply -f -
-	kubectl create configmap jingra-queries --from-file=wiki_dpr_e5_768_knn.json=queries/wiki_dpr_e5_768_knn.json -n default --dry-run=client -o yaml | kubectl apply -f -
+	kubectl create configmap jingra-schemas --from-file=wiki-dpr-es-768-knn.json=schemas/wiki-dpr-es-768-knn.json -n default --dry-run=client -o yaml | kubectl apply -f -
+	kubectl create configmap jingra-queries --from-file=wiki-dpr-es-768-knn.json=queries/wiki-dpr-es-768-knn.json -n default --dry-run=client -o yaml | kubectl apply -f -
 	kubectl apply -f ../k8s/jingra-datasets-pvc.yml
 	@echo "   2. Starting load job..."
 	@export JINGRA_IMAGE="$(JINGRA_IMAGE)"; \
@@ -180,8 +246,8 @@ jingra-eval: secrets-create connect-k8s jingra-eval-stop
 	@echo "📊 Starting Jingra evaluation (image: $(JINGRA_IMAGE))..."
 	@echo "   1. Applying Jingra config..."
 	kubectl create configmap jingra-config --from-file=jingra.yaml=jingra.yml -n default --dry-run=client -o yaml | kubectl apply -f -
-	kubectl create configmap jingra-schemas --from-file=wiki_dpr_e5_768_knn.json=schemas/wiki_dpr_e5_768_knn.json -n default --dry-run=client -o yaml | kubectl apply -f -
-	kubectl create configmap jingra-queries --from-file=wiki_dpr_e5_768_knn.json=queries/wiki_dpr_e5_768_knn.json -n default --dry-run=client -o yaml | kubectl apply -f -
+	kubectl create configmap jingra-schemas --from-file=wiki-dpr-es-768-knn.json=schemas/wiki-dpr-es-768-knn.json -n default --dry-run=client -o yaml | kubectl apply -f -
+	kubectl create configmap jingra-queries --from-file=wiki-dpr-es-768-knn.json=queries/wiki-dpr-es-768-knn.json -n default --dry-run=client -o yaml | kubectl apply -f -
 	kubectl apply -f ../k8s/jingra-datasets-pvc.yml
 	@echo "   2. Starting eval job..."
 	@export JINGRA_IMAGE="$(JINGRA_IMAGE)"; \

@@ -1,5 +1,5 @@
 {
-  "name": "wiki_dpr_e5_768_knn",
+  "name": "wiki-dpr-es-768-knn",
   "template": {
     "mappings": {
       "properties": {
@@ -10,12 +10,7 @@
           "index": true,
           "similarity": "cosine",
           "index_options": {
-            "type": "bbq_hnsw",
-            "ef_construction": 100,
-            "m": 16,
-            "rescore_vector": {
-              "oversample": 3.0
-            }
+            "type": "bbq_disk"
           }
         }
       }

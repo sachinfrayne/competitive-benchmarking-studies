@@ -9,7 +9,7 @@ secrets/terraform.tfvars
 
 # --- Secrets ---
 secrets/.secrets.env
-qdrant-gcp/scripts/.qdrant-api-key.env
+qdrant-gcp/.qdrant-api-key.env
 
 # --- Keys / certs ---
 *.pem

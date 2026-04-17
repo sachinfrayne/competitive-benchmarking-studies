@@ -14,8 +14,8 @@ datasets:
     index_name: "wiki-dpr-e5-768"
     vector_size: 768
     distance: "cosine"
-    schema_name: "wiki_dpr_e5_768_knn"
-    query_name: "wiki_dpr_e5_768_knn"
+    schema_name: "wiki-dpr-es-768-knn"
+    query_name: "wiki-dpr-es-768-knn"
     path:
       data_path: "datasets/wiki-dpr-e5-768/data.parquet"
       queries_path: "datasets/wiki-dpr-e5-768/queries.parquet"
@@ -29,53 +29,40 @@ datasets:
       ground_truth_field: "closest_ids"
     param_groups:
       recall@100:
-        - { size: 100, k: 30, num_candidates: 100, rescore: 1 }
-        - { size: 100, k: 40, num_candidates: 100, rescore: 1 }
-        - { size: 100, k: 50, num_candidates: 100, rescore: 1 }
-        - { size: 100, k: 60, num_candidates: 100, rescore: 1 }
-        - { size: 100, k: 70, num_candidates: 100, rescore: 1 }
-        - { size: 100, k: 80, num_candidates: 100, rescore: 1 }
-        - { size: 100, k: 90, num_candidates: 100, rescore: 1 }
-        - { size: 100, k: 100, num_candidates: 100, rescore: 1 }
-        - { size: 100, k: 100, num_candidates: 100, rescore: 2 }
-        - { size: 100, k: 100, num_candidates: 100, rescore: 3 }
-        - { size: 100, k: 150, num_candidates: 150, rescore: 1 }
-        - { size: 100, k: 150, num_candidates: 150, rescore: 2 }
-        - { size: 100, k: 150, num_candidates: 150, rescore: 3 }
-        - { size: 100, k: 200, num_candidates: 200, rescore: 1 }
-        - { size: 100, k: 200, num_candidates: 200, rescore: 2 }
-        - { size: 100, k: 200, num_candidates: 200, rescore: 3 }
-        - { size: 100, k: 250, num_candidates: 250, rescore: 1 }
-        - { size: 100, k: 250, num_candidates: 250, rescore: 2 }
-        - { size: 100, k: 250, num_candidates: 250, rescore: 3 }
-        - { size: 100, k: 300, num_candidates: 300, rescore: 1 }
-        - { size: 100, k: 300, num_candidates: 300, rescore: 2 }
-        - { size: 100, k: 300, num_candidates: 300, rescore: 3 }
-        - { size: 100, k: 400, num_candidates: 400, rescore: 3 }
-        - { size: 100, k: 500, num_candidates: 500, rescore: 3 }
-        - { size: 100, k: 600, num_candidates: 600, rescore: 3 }
-        - { size: 100, k: 700, num_candidates: 700, rescore: 3 }
-        - { size: 100, k: 800, num_candidates: 800, rescore: 3 }
-        - { size: 100, k: 900, num_candidates: 900, rescore: 3 }
-        - { size: 100, k: 1000, num_candidates: 1000, rescore: 3 }
-        - { size: 100, k: 1500, num_candidates: 1500, rescore: 3 }
-        - { size: 100, k: 2000, num_candidates: 2000, rescore: 3 }
-        - { size: 100, k: 2500, num_candidates: 2500, rescore: 3 }
-        - { size: 100, k: 3000, num_candidates: 3000, rescore: 3 }
-        - { size: 100, k: 4000, num_candidates: 4000, rescore: 3 }
-        - { size: 100, k: 5000, num_candidates: 5000, rescore: 3 }
-        - { size: 100, k: 6000, num_candidates: 6000, rescore: 3 }
-        - { size: 100, k: 7000, num_candidates: 7000, rescore: 3 }
-        - { size: 100, k: 8000, num_candidates: 8000, rescore: 3 }
-        - { size: 100, k: 9000, num_candidates: 9000, rescore: 3 }
-        - { size: 100, k: 10000, num_candidates: 10000, rescore: 3 }
+        - { size: 100, k: 10, visit_percentage: 0.1, oversample: 3 }
+        - { size: 100, k: 20, visit_percentage: 0.2, oversample: 3 }
+        - { size: 100, k: 30, visit_percentage: 0.3, oversample: 3 }
+        - { size: 100, k: 40, visit_percentage: 0.4, oversample: 3 }
+        - { size: 100, k: 50, visit_percentage: 0.5, oversample: 3 }
+        - { size: 100, k: 60, visit_percentage: 0.6, oversample: 3 }
+        - { size: 100, k: 70, visit_percentage: 0.7, oversample: 3 }
+        - { size: 100, k: 80, visit_percentage: 0.8, oversample: 3 }
+        - { size: 100, k: 90, visit_percentage: 0.9, oversample: 3 }
+        - { size: 100, k: 100, visit_percentage: 1, oversample: 3 }
+        - { size: 100, k: 150, visit_percentage: 1.5, oversample: 3 }
+        - { size: 100, k: 200, visit_percentage: 2, oversample: 3 }
+        - { size: 100, k: 250, visit_percentage: 2.5, oversample: 3 }
+        - { size: 100, k: 300, visit_percentage: 3, oversample: 3 }
+        - { size: 100, k: 350, visit_percentage: 3.5, oversample: 3 }
+        - { size: 100, k: 400, visit_percentage: 4, oversample: 3 }
+        - { size: 100, k: 450, visit_percentage: 4.5, oversample: 3 }
+        - { size: 100, k: 500, visit_percentage: 5, oversample: 3 }
+        - { size: 100, k: 550, visit_percentage: 5.5, oversample: 3 }
+        - { size: 100, k: 600, visit_percentage: 6, oversample: 3 }
+        - { size: 100, k: 650, visit_percentage: 6.5, oversample: 3 }
+        - { size: 100, k: 700, visit_percentage: 7, oversample: 3 }
+        - { size: 100, k: 750, visit_percentage: 7.5, oversample: 3 }
+        - { size: 100, k: 800, visit_percentage: 8, oversample: 3 }
+        - { size: 100, k: 850, visit_percentage: 8.5, oversample: 3 }
+        - { size: 100, k: 900, visit_percentage: 9, oversample: 3 }
+        - { size: 100, k: 1000, visit_percentage: 10, oversample: 3 }
 
 evaluation:
   warmup_workers: 16
   measurement_workers: 16
   warmup_rounds: 3
   measurement_rounds: 1
-  run_id: "jingra-es-9.4-vs-qd-1.17-vector-search-5-testing"
+  run_id: "es-9.3-vs-qd-1.17-vector-search-5"
 
 output:
   sinks:
