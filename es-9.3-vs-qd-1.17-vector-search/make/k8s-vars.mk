@@ -1,11 +1,11 @@
 # Renders engines/$(STACK)/k8s/*.yaml with sizing from K8S_VARS, then kubectl apply.
 # Requires: mikefarah yq v4 (https://github.com/mikefarah/yq), envsubst (gettext).
-# Only substitutes the seven keys from variables/k8s.yml so other ${...} (e.g. ${HOSTNAME} in ConfigMaps) is untouched.
+# Only substitutes known keys from variables/k8s.yml so other ${...} (e.g. ${HOSTNAME} in ConfigMaps) is untouched.
 
 K8S_VARS ?= $(REPO_ROOT)/variables/k8s.yml
 
 # Explicit list so envsubst does not expand unrelated ${...} in manifests.
-K8S_ENVSUBST_VARS := $${workerCount} $${storageClassName} $${storageSize} $${memoryRequest} $${cpuRequest} $${memoryLimit} $${cpuLimit}
+K8S_ENVSUBST_VARS := $${workerCount} $${storageClassName} $${storageSize} $${memoryRequest} $${cpuRequest} $${memoryLimit} $${cpuLimit} $${elasticsearchVersion} $${qdrantVersion}
 
 define KUBECTL_APPLY_K8S_FROM_VARS
 	@set -euo pipefail; \
@@ -23,6 +23,8 @@ define KUBECTL_APPLY_K8S_FROM_VARS
 	export memoryLimit="$$(yq '.memoryLimit' "$$K8S_VARS_FILE")"; \
 	export cpuLimit="$$(yq '.cpuLimit' "$$K8S_VARS_FILE")"; \
 	export workerCount="$$(yq '.workerCount' "$$K8S_VARS_FILE")"; \
+	export elasticsearchVersion="$$(yq '.elasticsearchVersion' "$$K8S_VARS_FILE")"; \
+	export qdrantVersion="$$(yq '.qdrantVersion' "$$K8S_VARS_FILE")"; \
 	RENDER_DIR="$$(mktemp -d)"; \
 	trap 'rm -rf "$$RENDER_DIR"' EXIT; \
 	STACK_K8S='$(STACK_DIR)k8s'; \
