@@ -1,5 +1,22 @@
-# Canonical root variables for engines/*/terraform (pool sizing).
-# Copied to each engine terraform/ by `make <stack> terraform-init`. Edit here only, then re-run init to refresh copies.
+# Root variables for engines/*/terraform (GKE benchmark inputs from variables/terraform.tfvars).
+# Same declarations are used in this module (split from variables.tf); make terraform-init also
+# copies this file to engines/<stack>/terraform/gke-engine-root-variables.tf for the root module.
+
+variable "location" {
+  type = string
+}
+
+variable "deletion_protection" {
+  type = bool
+}
+
+variable "main_pool_disk_type" {
+  type = string
+}
+
+variable "jingra_pool_name" {
+  type = string
+}
 
 variable "jingra_pool_disk_size_gb" {
   type = number

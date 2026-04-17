@@ -25,7 +25,12 @@ module "gke_benchmark" {
   cluster_name        = "qdrant-benchmark"
   main_pool_name      = "qdrant-nodepool"
   enable_ui_node_pool = false
+  ui_pool_name        = "ui-nodepool"
 
+  location                 = var.location
+  deletion_protection      = var.deletion_protection
+  main_pool_disk_type      = var.main_pool_disk_type
+  jingra_pool_name         = var.jingra_pool_name
   main_pool_node_count     = var.main_pool_node_count
   main_pool_machine_type   = var.main_pool_machine_type
   main_pool_disk_size_gb   = var.main_pool_disk_size_gb

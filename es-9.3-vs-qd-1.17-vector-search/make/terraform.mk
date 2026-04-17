@@ -1,7 +1,7 @@
 .PHONY: terraform-init terraform-plan terraform-apply terraform-destroy
 
 terraform-init:
-	cp "$(REPO_ROOT)/infra/terraform/gke-engine-root-variables.tf" "$(STACK_DIR)terraform/gke-engine-root-variables.tf"
+	cp "$(REPO_ROOT)/infra/terraform/modules/gke-benchmark/gke-engine-root-variables.tf" "$(STACK_DIR)terraform/gke-engine-root-variables.tf"
 	cd $(STACK_DIR)terraform && terraform init
 
 terraform-plan: terraform-init
