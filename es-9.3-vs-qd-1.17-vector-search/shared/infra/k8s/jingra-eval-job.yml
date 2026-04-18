@@ -4,9 +4,14 @@ kind: Job
 metadata:
   name: jingra-eval
   namespace: default
+  labels:
+    app: jingra
 spec:
   backoffLimit: 0
   template:
+    metadata:
+      labels:
+        app: jingra
     spec:
       nodeSelector:
         cloud.google.com/gke-nodepool: jingra-nodepool
