@@ -56,6 +56,15 @@ datasets:
         - { size: 100, k: 850, visit_percentage: 8.5, oversample: 3 }
         - { size: 100, k: 900, visit_percentage: 9, oversample: 3 }
         - { size: 100, k: 1000, visit_percentage: 10, oversample: 3 }
+        - { size: 100, k: 2000, visit_percentage: 20, oversample: 3 }
+        - { size: 100, k: 3000, visit_percentage: 30, oversample: 3 }
+        - { size: 100, k: 4000, visit_percentage: 40, oversample: 3 }
+        - { size: 100, k: 5000, visit_percentage: 50, oversample: 3 }
+        - { size: 100, k: 6000, visit_percentage: 60, oversample: 3 }
+        - { size: 100, k: 7000, visit_percentage: 70, oversample: 3 }
+        - { size: 100, k: 8000, visit_percentage: 80, oversample: 3 }
+        - { size: 100, k: 9000, visit_percentage: 90, oversample: 3 }
+        - { size: 100, k: 10000, visit_percentage: 100, oversample: 3 }
 
 evaluation:
   warmup_workers: 16

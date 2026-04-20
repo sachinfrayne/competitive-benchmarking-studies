@@ -1,16 +1,13 @@
 {
-  "name": "wiki-dpr-es-768-knn",
-  "template": {
-    "vector": "{{query_vector}}",
-    "params": {
-      "hnsw_ef": "{{hnsw_ef}}",
-      "quantization": {
-        "rescore": true,
-        "oversampling": "{{oversampling}}"
-      }
-    },
-    "limit": "{{size}}",
-    "with_payload": false,
-    "with_vector": false
+  "vector": ["{{query_vector}}"],
+  "limit": "{{size}}",
+  "with_payload": false,
+  "with_vector": false,
+  "params": {
+    "hnsw_ef": "{{hnsw_ef}}",
+    "quantization": {
+      "rescore": true,
+      "oversampling": "{{oversampling}}"
+    }
   }
 }

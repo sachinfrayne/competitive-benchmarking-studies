@@ -1,23 +1,20 @@
 {
-  "name": "wiki-dpr-es-768-knn",
-  "template": {
-    "mappings": {
-      "properties": {
-        "embedding": {
-          "type": "dense_vector",
-          "element_type": "float",
-          "dims": 768,
-          "index": true,
-          "similarity": "cosine",
-          "index_options": {
-            "type": "bbq_disk"
-          }
+  "mappings": {
+    "properties": {
+      "embedding": {
+        "type": "dense_vector",
+        "element_type": "float",
+        "dims": 768,
+        "index": true,
+        "similarity": "cosine",
+        "index_options": {
+          "type": "bbq_disk"
         }
       }
-    },
-    "settings": {
-      "number_of_shards": "3",
-      "number_of_replicas": "1"
     }
+  },
+  "settings": {
+    "number_of_shards": "3",
+    "number_of_replicas": "1"
   }
 }
