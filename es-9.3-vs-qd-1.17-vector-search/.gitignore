@@ -21,7 +21,7 @@ engines/qdrant/.qdrant-api-key.env
 
 # --- Jingra / benchmark artifacts ---
 query-dumps/
-engines/*/jingra.local.yml
+jingra.local.yml
 
 # --- analyze/ ---
 analyze/output/
