@@ -40,9 +40,9 @@ define UI_CREDENTIAL_LINES
 
 endef
 
-.PHONY: k8s-apply k8s-apply-manifests k8s-wait-ready k8s-post-apply k8s-delete logs-ui
+.PHONY: k8s-apply k8s-apply-manifests _k8s-wait-ready k8s-post-apply k8s-delete-impl logs-ui
 
-k8s-apply: secrets-create k8s-apply-manifests k8s-wait-ready k8s-post-apply
+k8s-apply: secrets-create k8s-apply-manifests _k8s-wait-ready k8s-post-apply
 
 k8s-post-apply:
 	@echo "Updating jingra-credentials with current Elasticsearch password..."
@@ -74,7 +74,7 @@ k8s-apply-manifests:
 	fi
 	$(KUBECTL_APPLY_K8S_FROM_VARS)
 
-k8s-wait-ready:
+_k8s-wait-ready:
 	@set -euo pipefail; \
 	NS="$(or $(NAMESPACE),default)"; \
 	i=0; \
@@ -92,7 +92,7 @@ k8s-wait-ready:
 	done; \
 	kubectl wait --for=condition=ready pod -n "$$NS" -l common.k8s.elastic.co/type=kibana --timeout=$(KUBECTL_WAIT_TIMEOUT)
 
-k8s-delete: connect-k8s
+k8s-delete-impl:
 	@kubectl delete job jingra-load jingra-eval -n $(NAMESPACE) --ignore-not-found
 	@kubectl delete kibana es-cluster -n $(NAMESPACE) --ignore-not-found
 	@kubectl delete elasticsearch es-cluster -n $(NAMESPACE) --ignore-not-found

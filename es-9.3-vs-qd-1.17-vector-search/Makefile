@@ -87,6 +87,7 @@ help:
 	@echo "    Injects analysis.run_id from shared/variables/run_id.yml (needs mikefarah yq v4)."
 	@echo "    Needs RESULTS_ES_URL, RESULTS_ES_USER, RESULTS_ES_PASSWORD (env or shared/secrets/.secrets.env)."
 	@echo "    Writes CSVs under analyze/output/ (recall, summary, throughput comparisons)."
+	@echo "    ANALYZE_CONFIG=<path>  optional; override config (default: analyze/jingra.yml)"
 	@echo "  make analyze-clean"
 	@echo "    Removes analyze/output/."
 	@echo ""
@@ -96,6 +97,8 @@ analyze-clean:
 
 $(ANALYZE_OUTPUT_DIR):
 	@mkdir -p "$@"
+
+ANALYZE_CONFIG ?= $(ANALYZE_DIR)/jingra.yml
 
 analyze: analyze-clean | $(ANALYZE_OUTPUT_DIR)
 	@set -euo pipefail; \
@@ -107,7 +110,18 @@ analyze: analyze-clean | $(ANALYZE_OUTPUT_DIR)
 	done; \
 	TMP="$$(mktemp)"; \
 	trap 'rm -f "$$TMP"' EXIT; \
-	$(call MERGE_RUN_ID_TO_FILE,$(ANALYZE_DIR)/jingra.yml,$$TMP,.analysis.run_id); \
+	$(call MERGE_RUN_ID_TO_FILE,$(ANALYZE_CONFIG),$$TMP,.analysis.run_id); \
+	VERSIONS_DIR="$(REPO_ROOT)shared/variables/versions"; \
+	while IFS= read -r engine; do \
+		vfile="$$VERSIONS_DIR/.$$engine"; \
+		if [[ ! -f "$$vfile" ]]; then \
+			echo >&2 "ERROR: version file not found for engine '$$engine': $$vfile"; \
+			exit 1; \
+		fi; \
+		version="$$(head -n1 "$$vfile" | tr -d '[:space:]')"; \
+		TMP2="$$(mktemp)"; \
+		yq eval ".analysis.engine_versions.$$engine = \"$$version\"" "$$TMP" > "$$TMP2" && mv "$$TMP2" "$$TMP"; \
+	done < <(yq eval '.analysis.engines[]' "$$TMP"); \
 	docker run --rm \
 		-v "$$TMP:/config/jingra.yml:ro" \
 		-v "$(ANALYZE_OUTPUT_DIR):/output" \

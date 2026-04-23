@@ -13,7 +13,7 @@ ENGINE_LOG_POD_SELECTOR := app=qdrant
 UI_SERVICE_NAME := qdrant-service
 UI_URL_TEMPLATE := URL:      https://$${EXTERNAL_IP}:6333/dashboard
 
-.PHONY: ensure-qdrant-api-key-in-env k8s-apply k8s-apply-manifests k8s-wait-ready k8s-delete
+.PHONY: ensure-qdrant-api-key-in-env k8s-apply k8s-apply-manifests _k8s-wait-ready k8s-delete-impl
 
 ensure-qdrant-api-key-in-env:
 	@set -euo pipefail; \
@@ -94,15 +94,15 @@ define UI_CREDENTIAL_LINES
 
 endef
 
-k8s-apply: secrets-create k8s-apply-manifests k8s-wait-ready
+k8s-apply: secrets-create k8s-apply-manifests _k8s-wait-ready
 
 k8s-apply-manifests:
 	$(KUBECTL_APPLY_K8S_FROM_VARS)
 
-k8s-wait-ready:
+_k8s-wait-ready:
 	kubectl wait --for=condition=ready pod -l app=qdrant --timeout=$(KUBECTL_WAIT_TIMEOUT) || true
 
-k8s-delete: connect-k8s
+k8s-delete-impl:
 	@kubectl delete job jingra-load jingra-eval -n $(NAMESPACE) --ignore-not-found
 	@kubectl delete statefulset qdrant -n $(NAMESPACE) --ignore-not-found
 	@kubectl delete pvc -l app=qdrant -n $(NAMESPACE) --ignore-not-found

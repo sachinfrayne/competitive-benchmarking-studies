@@ -6,3 +6,4 @@ include $(REPO_ROOT)/shared/make/logs-common.mk
 include $(REPO_ROOT)/shared/make/stack-secrets.mk
 include $(REPO_ROOT)/shared/make/stack-status.mk
 include $(REPO_ROOT)/shared/make/stack-access.mk
+include $(REPO_ROOT)/shared/make/k8s-delete.mk

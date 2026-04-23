@@ -1,5 +1,5 @@
-# Renders engines/$(STACK)/k8s/*.yaml with sizing from K8S_VARS plus stack-local
-# engines/$(STACK)/k8s/.version (plain text → env engineVersion), then kubectl apply.
+# Renders engines/$(STACK)/k8s/*.yaml with sizing from K8S_VARS plus
+# shared/variables/versions/.<stack> (plain text → env engineVersion), then kubectl apply.
 # Reads shared sizing YAML with mikefarah yq v4 (same as jingra run_id merge).
 # Requires: envsubst (gettext), yq.
 # Only substitutes known keys so other ${...} (e.g. ${HOSTNAME} in ConfigMaps) is untouched.
@@ -19,7 +19,7 @@ define KUBECTL_APPLY_K8S_FROM_VARS
 	}; \
 	command -v envsubst >/dev/null 2>&1 || { echo >&2 "ERROR: envsubst is required for k8s-apply (gettext package)"; exit 1; }; \
 	K8S_VARS_FILE='$(K8S_VARS)'; \
-	STACK_K8S_VARS='$(STACK_DIR)k8s/.version'; \
+	STACK_K8S_VARS='$(REPO_ROOT)/shared/variables/versions/.$(STACK)'; \
 	if [[ ! -f "$$K8S_VARS_FILE" ]]; then \
 		echo >&2 "ERROR: K8S vars file not found: $$K8S_VARS_FILE"; \
 		exit 1; \
@@ -41,12 +41,14 @@ define KUBECTL_APPLY_K8S_FROM_VARS
 		exit 1; \
 	fi; \
 	export engineVersion; \
+	$(K8S_VARS_EXTRA_SHELL) \
 	RENDER_DIR="$$(mktemp -d)"; \
 	trap 'rm -rf "$$RENDER_DIR"' EXIT; \
 	STACK_K8S='$(STACK_DIR)k8s'; \
 	shopt -s nullglob; \
+	ALL_ENVSUBST_VARS='$(K8S_ENVSUBST_VARS) $(K8S_ENVSUBST_EXTRA_VARS)'; \
 	for f in "$$STACK_K8S"/*.yaml; do \
-		envsubst '$(K8S_ENVSUBST_VARS)' < "$$f" > "$$RENDER_DIR/$$(basename "$$f")"; \
+		envsubst "$$ALL_ENVSUBST_VARS" < "$$f" > "$$RENDER_DIR/$$(basename "$$f")"; \
 	done; \
 	kubectl apply -f "$$RENDER_DIR/"
 endef
