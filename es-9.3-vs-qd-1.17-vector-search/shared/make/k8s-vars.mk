@@ -47,7 +47,7 @@ define KUBECTL_APPLY_K8S_FROM_VARS
 	STACK_K8S='$(STACK_DIR)k8s'; \
 	shopt -s nullglob; \
 	ALL_ENVSUBST_VARS='$(K8S_ENVSUBST_VARS) $(K8S_ENVSUBST_EXTRA_VARS)'; \
-	for f in "$$STACK_K8S"/*.yaml; do \
+	for f in "$$STACK_K8S"/*.yaml "$$STACK_K8S"/*.yml; do \
 		envsubst "$$ALL_ENVSUBST_VARS" < "$$f" > "$$RENDER_DIR/$$(basename "$$f")"; \
 	done; \
 	kubectl apply -f "$$RENDER_DIR/"
