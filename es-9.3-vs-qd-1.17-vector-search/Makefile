@@ -15,10 +15,6 @@ STACK_TARGETS := \
 	jingra-eval jingra-eval-stop jingra-eval-logs copy-query-dumps \
 	status metrics logs-engine connect-ui logs-ui
 
-# No-op goal so `make <stack> logs-eval` still satisfies the extra goal; work runs in stack.mk.
-logs-eval:
-	@:
-
 # Spell stacks literally for shell tab completion (zsh/bash grep this file; they do not expand $(ENGINES)).
 # When you add engines/*/engine.mk, add the name here too (alongside $(ENGINES), duplication is harmless).
 .PHONY: help analyze analyze-clean elasticsearch qdrant $(STACK_TARGETS)
