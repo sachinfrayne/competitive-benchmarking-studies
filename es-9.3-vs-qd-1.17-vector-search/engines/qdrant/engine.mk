@@ -100,7 +100,9 @@ k8s-apply-manifests:
 	$(KUBECTL_APPLY_K8S_FROM_VARS)
 
 _k8s-wait-ready:
-	kubectl wait --for=condition=ready pod -l app=qdrant --timeout=$(KUBECTL_WAIT_TIMEOUT) || true
+	@set -euo pipefail; \
+	NS="$(or $(NAMESPACE),default)"; \
+	kubectl rollout status statefulset/qdrant -n "$$NS" --timeout=$(KUBECTL_WAIT_TIMEOUT)
 
 k8s-delete-impl:
 	@kubectl delete job jingra-load jingra-eval -n $(NAMESPACE) --ignore-not-found
