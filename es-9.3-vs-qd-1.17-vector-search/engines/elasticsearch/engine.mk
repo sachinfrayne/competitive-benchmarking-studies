@@ -55,9 +55,21 @@ k8s-post-apply:
 			--dry-run=client -o yaml | kubectl apply -f -; \
 		echo "✓ jingra-credentials updated"; \
 		echo "Activating Elasticsearch trial license..."; \
-		kubectl run -i --rm --restart=Never curl-trial --image=curlimages/curl:latest -- \
-			curl -k -u "elastic:$$ES_PASS" -X POST "https://es-cluster-es-http.$$NS.svc:9200/_license/start_trial?acknowledge=true" 2>/dev/null || true; \
-		echo "✓ Trial license activation attempted"; \
+		ES_POD=$$(kubectl get pod -n "$$NS" -l common.k8s.elastic.co/type=elasticsearch -o jsonpath='{.items[0].metadata.name}' 2>/dev/null); \
+		if [ -z "$$ES_POD" ]; then \
+			echo "⚠ Warning: no Elasticsearch pod found; skipping trial activation"; \
+		else \
+			TRIAL_RESPONSE=$$(kubectl exec -n "$$NS" "$$ES_POD" -- \
+				curl -sk -u "elastic:$$ES_PASS" -X POST "https://localhost:9200/_license/start_trial?acknowledge=true" 2>&1); \
+			echo "  Trial response: $$TRIAL_RESPONSE"; \
+			if echo "$$TRIAL_RESPONSE" | grep -q '"trial_was_started":true'; then \
+				echo "✓ Trial license activated"; \
+			elif echo "$$TRIAL_RESPONSE" | grep -q '"error_message"'; then \
+				echo "⚠ Trial activation returned an error (check response above)"; \
+			else \
+				echo "✓ Trial license activation attempted (check response above)"; \
+			fi; \
+		fi; \
 	else \
 		echo "⚠ Warning: es-cluster-es-elastic-user not found"; \
 	fi
