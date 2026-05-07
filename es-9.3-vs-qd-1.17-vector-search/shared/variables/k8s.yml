@@ -1,7 +1,7 @@
-storageClassName: premium-rwo
-storageSize: 200Gi
-memoryRequest: 56Gi
-cpuRequest: 15
-memoryLimit: 56Gi
-cpuLimit: 15
-workerCount: 6
+storageClassName: hyperdisk-balanced-rwo
+storageSize: 320Gi
+memoryRequest: 26Gi
+cpuRequest: 7
+memoryLimit: 26Gi
+cpuLimit: 7
+workerCount: 3

@@ -10,7 +10,7 @@ dataset: "wiki-dpr-e5-768"
 
 datasets:
   wiki-dpr-e5-768:
-    type: "parquet"
+    type: "wiki-dpr-e5-768-knn"
     index_name: "wiki-dpr-e5-768"
     vector_size: 768
     distance: "cosine"
@@ -29,46 +29,26 @@ datasets:
       ground_truth_field: "closest_ids"
     param_groups:
       recall@100:
-        - { size: 100, k: 10, visit_percentage: 0.1, oversample: 3 }
-        - { size: 100, k: 20, visit_percentage: 0.2, oversample: 3 }
-        - { size: 100, k: 30, visit_percentage: 0.3, oversample: 3 }
-        - { size: 100, k: 40, visit_percentage: 0.4, oversample: 3 }
-        - { size: 100, k: 50, visit_percentage: 0.5, oversample: 3 }
-        - { size: 100, k: 60, visit_percentage: 0.6, oversample: 3 }
-        - { size: 100, k: 70, visit_percentage: 0.7, oversample: 3 }
-        - { size: 100, k: 80, visit_percentage: 0.8, oversample: 3 }
-        - { size: 100, k: 90, visit_percentage: 0.9, oversample: 3 }
-        - { size: 100, k: 100, visit_percentage: 1, oversample: 3 }
-        - { size: 100, k: 150, visit_percentage: 1.5, oversample: 3 }
-        - { size: 100, k: 200, visit_percentage: 2, oversample: 3 }
-        - { size: 100, k: 250, visit_percentage: 2.5, oversample: 3 }
-        - { size: 100, k: 300, visit_percentage: 3, oversample: 3 }
-        - { size: 100, k: 350, visit_percentage: 3.5, oversample: 3 }
-        - { size: 100, k: 400, visit_percentage: 4, oversample: 3 }
-        - { size: 100, k: 450, visit_percentage: 4.5, oversample: 3 }
-        - { size: 100, k: 500, visit_percentage: 5, oversample: 3 }
-        - { size: 100, k: 550, visit_percentage: 5.5, oversample: 3 }
-        - { size: 100, k: 600, visit_percentage: 6, oversample: 3 }
-        - { size: 100, k: 650, visit_percentage: 6.5, oversample: 3 }
-        - { size: 100, k: 700, visit_percentage: 7, oversample: 3 }
-        - { size: 100, k: 750, visit_percentage: 7.5, oversample: 3 }
-        - { size: 100, k: 800, visit_percentage: 8, oversample: 3 }
-        - { size: 100, k: 850, visit_percentage: 8.5, oversample: 3 }
-        - { size: 100, k: 900, visit_percentage: 9, oversample: 3 }
-        - { size: 100, k: 1000, visit_percentage: 10, oversample: 3 }
-        - { size: 100, k: 2000, visit_percentage: 20, oversample: 3 }
-        - { size: 100, k: 3000, visit_percentage: 30, oversample: 3 }
-        - { size: 100, k: 4000, visit_percentage: 40, oversample: 3 }
-        - { size: 100, k: 5000, visit_percentage: 50, oversample: 3 }
-        - { size: 100, k: 6000, visit_percentage: 60, oversample: 3 }
-        - { size: 100, k: 7000, visit_percentage: 70, oversample: 3 }
-        - { size: 100, k: 8000, visit_percentage: 80, oversample: 3 }
-        - { size: 100, k: 9000, visit_percentage: 90, oversample: 3 }
-        - { size: 100, k: 10000, visit_percentage: 100, oversample: 3 }
+        - { size: 100, k: 100, visit_percentage: 1, oversample: 3 } # 0.8881
+        - { size: 100, k: 100, visit_percentage: 1.5, oversample: 3 } # 0.9208
+        - { size: 100, k: 100, visit_percentage: 2, oversample: 3 } # 0.9395
+        - { size: 100, k: 100, visit_percentage: 2.5, oversample: 3 } # 0.9516
+        - { size: 100, k: 100, visit_percentage: 3, oversample: 3 } # 0.9602
+        - { size: 100, k: 100, visit_percentage: 3.5, oversample: 3 } # 0.9667
+        - { size: 100, k: 100, visit_percentage: 4, oversample: 3 } # 0.9714
+        - { size: 100, k: 100, visit_percentage: 4.5, oversample: 3 } # 0.9751
+        - { size: 100, k: 100, visit_percentage: 5, oversample: 3 } # 0.9781
+        - { size: 100, k: 100, visit_percentage: 5.5, oversample: 3 } # 0.9809
+
+load:
+  threads: 4
+  batch_size: 1000
+  queue_capacity: 10
+  forcemerge: true
 
 evaluation:
-  warmup_workers: 16
-  measurement_workers: 16
+  warmup_workers: 4
+  measurement_workers: 4
   warmup_rounds: 3
   measurement_rounds: 1
 

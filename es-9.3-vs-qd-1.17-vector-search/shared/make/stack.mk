@@ -26,5 +26,7 @@ JINGRA_CONFIG ?= $(STACK_DIR)jingra.yml
 JINGRA_SCHEMAS_DIR ?= $(STACK_DIR)schemas
 JINGRA_QUERIES_DIR ?= $(STACK_DIR)queries
 
+-include $(REPO_ROOT)/shared/secrets/.secrets.env
+
 include $(STACK_DIR)engine.mk
 include $(REPO_ROOT)/shared/make/common.mk

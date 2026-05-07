@@ -8,7 +8,8 @@
         "index": true,
         "similarity": "cosine",
         "index_options": {
-          "type": "bbq_disk"
+          "type": "bbq_disk",
+          "bits": 2
         }
       }
     }

@@ -1,7 +1,8 @@
 {
   "vectors": {
     "size": 768,
-    "distance": "Cosine"
+    "distance": "Cosine",
+    "on_disk": true
   },
   "shard_number": 3,
   "replication_factor": 2,
@@ -11,6 +12,7 @@
   },
   "quantization_config": {
     "binary": {
+      "encoding": "two_bits",
       "always_ram": true
     }
   }

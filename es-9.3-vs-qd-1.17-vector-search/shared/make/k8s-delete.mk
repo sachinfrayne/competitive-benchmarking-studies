@@ -6,4 +6,6 @@ confirm-k8s-delete:
 	@read -p "Are you sure? (yes/no): " confirm && [ "$$confirm" = "yes" ]
 
 k8s-delete: connect-k8s confirm-k8s-delete k8s-delete-impl
-	@:
+	@if [[ -f '$(REPO_ROOT)/shared/infra/k8s/storage-class.yml' ]]; then \
+		kubectl delete -f '$(REPO_ROOT)/shared/infra/k8s/storage-class.yml' --ignore-not-found; \
+	fi

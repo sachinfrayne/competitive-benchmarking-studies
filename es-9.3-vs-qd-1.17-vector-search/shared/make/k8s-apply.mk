@@ -1,3 +1,7 @@
+# Shared kubectl apply pipeline for engine stacks: cluster-scoped StorageClass, then
+# envsubst-rendered manifests from engines/$(STACK)/k8s/ using K8S_VARS + stack version.
+# Included from common.mk. Engines override K8S_VARS_EXTRA_SHELL / K8S_ENVSUBST_EXTRA_VARS as needed.
+
 # Renders engines/$(STACK)/k8s/*.yaml with sizing from K8S_VARS plus
 # shared/variables/versions/.<stack> (plain text → env engineVersion), then kubectl apply.
 # Reads shared sizing YAML with mikefarah yq v4 (same as jingra run_id merge).
@@ -42,6 +46,10 @@ define KUBECTL_APPLY_K8S_FROM_VARS
 	fi; \
 	export engineVersion; \
 	$(K8S_VARS_EXTRA_SHELL) \
+	if [[ -f '$(REPO_ROOT)/shared/infra/k8s/storage-class.yml' ]]; then \
+		echo "kubectl apply: shared cluster StorageClass"; \
+		kubectl apply -f '$(REPO_ROOT)/shared/infra/k8s/storage-class.yml'; \
+	fi; \
 	RENDER_DIR="$$(mktemp -d)"; \
 	trap 'rm -rf "$$RENDER_DIR"' EXIT; \
 	STACK_K8S='$(STACK_DIR)k8s'; \

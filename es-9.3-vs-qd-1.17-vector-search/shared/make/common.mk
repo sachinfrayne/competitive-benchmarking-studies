@@ -1,4 +1,4 @@
-include $(REPO_ROOT)/shared/make/k8s-vars.mk
+include $(REPO_ROOT)/shared/make/k8s-apply.mk
 include $(REPO_ROOT)/shared/make/terraform.mk
 include $(REPO_ROOT)/shared/make/gke-connect.mk
 include $(REPO_ROOT)/shared/make/jingra-jobs.mk

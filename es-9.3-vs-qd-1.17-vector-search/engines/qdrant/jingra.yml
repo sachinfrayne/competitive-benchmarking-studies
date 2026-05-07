@@ -11,7 +11,7 @@ dataset: "wiki-dpr-e5-768"
 
 datasets:
   wiki-dpr-e5-768:
-    type: "parquet"
+    type: "wiki-dpr-e5-768-knn"
     index_name: "wiki-dpr-e5-768"
     vector_size: 768
     distance: "cosine"
@@ -30,38 +30,23 @@ datasets:
       ground_truth_field: "closest_ids"
     param_groups:
       recall@100:
-        - { size: 100, hnsw_ef: 10, oversampling: 1 }
-        - { size: 100, hnsw_ef: 20, oversampling: 2 }
-        - { size: 100, hnsw_ef: 30, oversampling: 3 }
-        - { size: 100, hnsw_ef: 40, oversampling: 4 }
-        - { size: 100, hnsw_ef: 50, oversampling: 5 }
-        - { size: 100, hnsw_ef: 60, oversampling: 6 }
-        - { size: 100, hnsw_ef: 70, oversampling: 7 }
-        - { size: 100, hnsw_ef: 80, oversampling: 8 }
-        - { size: 100, hnsw_ef: 90, oversampling: 9 }
-        - { size: 100, hnsw_ef: 100, oversampling: 10 }
-        - { size: 100, hnsw_ef: 200, oversampling: 20 }
-        - { size: 100, hnsw_ef: 300, oversampling: 30 }
-        - { size: 100, hnsw_ef: 400, oversampling: 40 }
-        - { size: 100, hnsw_ef: 500, oversampling: 50 }
-        - { size: 100, hnsw_ef: 600, oversampling: 60 }
-        - { size: 100, hnsw_ef: 700, oversampling: 70 }
-        - { size: 100, hnsw_ef: 800, oversampling: 80 }
-        - { size: 100, hnsw_ef: 900, oversampling: 90 }
-        - { size: 100, hnsw_ef: 1000, oversampling: 100 }
-        - { size: 100, hnsw_ef: 2000, oversampling: 200 }
-        - { size: 100, hnsw_ef: 3000, oversampling: 300 }
-        - { size: 100, hnsw_ef: 4000, oversampling: 400 }
-        - { size: 100, hnsw_ef: 5000, oversampling: 500 }
-        - { size: 100, hnsw_ef: 6000, oversampling: 600 }
-        - { size: 100, hnsw_ef: 7000, oversampling: 700 }
-        - { size: 100, hnsw_ef: 8000, oversampling: 800 }
-        - { size: 100, hnsw_ef: 9000, oversampling: 900 }
-        - { size: 100, hnsw_ef: 10000, oversampling: 1000 }
+        - { size: 100, hnsw_ef: 10, oversampling: 3 } # 0.8712
+        - { size: 100, hnsw_ef: 50, oversampling: 3 } # 0.9319
+        - { size: 100, hnsw_ef: 60, oversampling: 3 } # 0.9415
+        - { size: 100, hnsw_ef: 70, oversampling: 3 } # 0.9488
+        - { size: 100, hnsw_ef: 80, oversampling: 3 } # 0.9544
+        - { size: 100, hnsw_ef: 90, oversampling: 3 } # 0.9588
+        - { size: 100, hnsw_ef: 100, oversampling: 3 } # 0.9626
+        - { size: 100, hnsw_ef: 150, oversampling: 3 } # 0.9627
+
+load:
+  threads: 4
+  batch_size: 1000
+  queue_capacity: 10
 
 evaluation:
-  warmup_workers: 16
-  measurement_workers: 16
+  warmup_workers: 4
+  measurement_workers: 4
   warmup_rounds: 3
   measurement_rounds: 1
 
