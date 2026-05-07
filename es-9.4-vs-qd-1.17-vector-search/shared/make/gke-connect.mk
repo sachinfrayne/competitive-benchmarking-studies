@@ -1,6 +1,6 @@
 .PHONY: connect-k8s
 
-GKE_ZONE ?= us-central1-b
+GKE_ZONE ?= us-central1-a
 
 connect-k8s:
 	@PROJECT_ID=$$(grep '^project_id' $(REPO_ROOT)/shared/secrets/terraform.tfvars | awk -F'=' '{print $$2}' | tr -d ' "'); \

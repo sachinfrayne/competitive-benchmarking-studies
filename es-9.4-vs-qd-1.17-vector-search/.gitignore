@@ -24,6 +24,4 @@ query-dumps/
 jingra.local.yml
 
 # --- analyze/ ---
-analyze/output/
-analyze/**/*.csv
-analyze/**/*.png
+analyze/output/*.png
