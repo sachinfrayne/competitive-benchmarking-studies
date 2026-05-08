@@ -30,14 +30,14 @@ datasets:
       ground_truth_field: "closest_ids"
     param_groups:
       recall@100:
-        - { size: 100, hnsw_ef: 10, oversampling: 3 } # 0.8712
-        - { size: 100, hnsw_ef: 50, oversampling: 3 } # 0.9319
-        - { size: 100, hnsw_ef: 60, oversampling: 3 } # 0.9415
-        - { size: 100, hnsw_ef: 70, oversampling: 3 } # 0.9488
-        - { size: 100, hnsw_ef: 80, oversampling: 3 } # 0.9544
-        - { size: 100, hnsw_ef: 90, oversampling: 3 } # 0.9588
-        - { size: 100, hnsw_ef: 100, oversampling: 3 } # 0.9626
-        - { size: 100, hnsw_ef: 150, oversampling: 3 } # 0.9627
+        - { size: 100, hnsw_ef: 10, oversampling: 3 } # 0.8716
+        - { size: 100, hnsw_ef: 50, oversampling: 3 } # 0.9327
+        - { size: 100, hnsw_ef: 60, oversampling: 3 } # 0.9423
+        - { size: 100, hnsw_ef: 70, oversampling: 3 } # 0.9492
+        - { size: 100, hnsw_ef: 80, oversampling: 3 } # 0.9549
+        - { size: 100, hnsw_ef: 90, oversampling: 3 } # 0.9592
+        - { size: 100, hnsw_ef: 100, oversampling: 3 } # 0.9628
+        - { size: 100, hnsw_ef: 150, oversampling: 3 } # 0.9628
 
 load:
   threads: 4

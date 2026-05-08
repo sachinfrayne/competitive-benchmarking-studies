@@ -29,16 +29,16 @@ datasets:
       ground_truth_field: "closest_ids"
     param_groups:
       recall@100:
-        - { size: 100, k: 100, visit_percentage: 1, oversample: 3 } # 0.8881
-        - { size: 100, k: 100, visit_percentage: 1.5, oversample: 3 } # 0.9208
-        - { size: 100, k: 100, visit_percentage: 2, oversample: 3 } # 0.9395
-        - { size: 100, k: 100, visit_percentage: 2.5, oversample: 3 } # 0.9516
-        - { size: 100, k: 100, visit_percentage: 3, oversample: 3 } # 0.9602
-        - { size: 100, k: 100, visit_percentage: 3.5, oversample: 3 } # 0.9667
-        - { size: 100, k: 100, visit_percentage: 4, oversample: 3 } # 0.9714
-        - { size: 100, k: 100, visit_percentage: 4.5, oversample: 3 } # 0.9751
-        - { size: 100, k: 100, visit_percentage: 5, oversample: 3 } # 0.9781
-        - { size: 100, k: 100, visit_percentage: 5.5, oversample: 3 } # 0.9809
+        - { size: 100, k: 100, visit_percentage: 1, oversample: 3 } # 0.8871
+        - { size: 100, k: 100, visit_percentage: 1.5, oversample: 3 } # 0.9197
+        - { size: 100, k: 100, visit_percentage: 2, oversample: 3 } # 0.9390
+        - { size: 100, k: 100, visit_percentage: 2.5, oversample: 3 } # 0.9515
+        - { size: 100, k: 100, visit_percentage: 3, oversample: 3 } # 0.9599
+        - { size: 100, k: 100, visit_percentage: 3.5, oversample: 3 } # 0.9666
+        - { size: 100, k: 100, visit_percentage: 4, oversample: 3 } # 0.9712
+        - { size: 100, k: 100, visit_percentage: 4.5, oversample: 3 } # 0.9753
+        - { size: 100, k: 100, visit_percentage: 5, oversample: 3 } # 0.9784
+        - { size: 100, k: 100, visit_percentage: 5.5, oversample: 3 } # 0.9808
 
 load:
   threads: 4
