@@ -16,16 +16,16 @@ variable "project_id" {
 provider "google" {
   project     = var.project_id
   region      = "us-central1"
-  credentials = file(abspath("${path.root}/../../../shared/secrets/credentials.json"))
+  credentials = file(abspath("${path.root}/../../shared/secrets/credentials.json"))
 }
 
 module "gke_benchmark" {
-  source = "../../../shared/infra/terraform/modules/gke-benchmark"
+  source = "../../shared/infra/terraform/modules/gke-benchmark"
 
-  cluster_name        = "elasticsearch-benchmark"
-  main_pool_name      = "elasticsearch-nodepool"
-  enable_ui_node_pool = true
-  ui_pool_name        = "kibana-nodepool"
+  cluster_name        = "qdrant-benchmark"
+  main_pool_name      = "qdrant-nodepool"
+  enable_ui_node_pool = false
+  ui_pool_name        = "ui-nodepool"
 
   location                 = var.location
   deletion_protection      = var.deletion_protection

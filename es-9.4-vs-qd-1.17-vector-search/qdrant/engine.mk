@@ -46,7 +46,7 @@ ENGINE_SOURCE_ENV := if [[ -f "$(STACK_DIR).qdrant-api-key.env" ]]; then set -a;
 
 define ENGINE_EXTRA_SECRETS
 	if [[ -z "$${QDRANT_API_KEY:-}" ]]; then \
-		echo >&2 "ERROR: QDRANT_API_KEY is not set. Add engines/qdrant/.qdrant-api-key.env or run \`make ensure-qdrant-api-key-in-env\`."; \
+			echo >&2 "ERROR: QDRANT_API_KEY is not set. Add qdrant/.qdrant-api-key.env or run \`make ensure-qdrant-api-key-in-env\`."; \
 		exit 1; \
 	fi; \
 	command -v openssl >/dev/null 2>&1 || { echo >&2 "ERROR: openssl is required for Qdrant TLS material"; exit 1; }; \
@@ -81,10 +81,8 @@ define ENGINE_EXTRA_SECRETS
 endef
 
 define ENGINE_CREDENTIALS_UPSERT
-	kubectl create secret generic jingra-credentials \
-		--from-literal=ENGINE_PASSWORD="$$QDRANT_API_KEY" \
-		--namespace="$$NS" \
-		--dry-run=client -o yaml | kubectl apply -f -; \
+	$(JINGRA_CREDENTIALS_SHELL_FUNCTIONS) \
+	jingra_credentials_apply_once "$$QDRANT_API_KEY"; \
 
 endef
 
