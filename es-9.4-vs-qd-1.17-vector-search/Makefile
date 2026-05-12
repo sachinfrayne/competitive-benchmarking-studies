@@ -19,6 +19,10 @@ ENGINE_TARGETS := \
 -include $(REPO_ROOT).env
 -include $(REPO_ROOT).secrets.env
 
+# GKE_ZONE_DEFAULT is the project default from .env.
+# Override at runtime: GKE_ZONE=us-east1-b make <target>
+GKE_ZONE ?= $(GKE_ZONE_DEFAULT)
+
 # ── Shared macro (used in both contexts) ─────────────────────────────────────
 
 # Source both env files into a recipe shell. Usage: $(call SOURCE_ENV)
