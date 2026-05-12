@@ -10,6 +10,7 @@ resource "google_container_cluster" "benchmark" {
 resource "google_container_node_pool" "main_workers" {
   name       = var.main_pool_name
   cluster    = google_container_cluster.benchmark.name
+  location   = google_container_cluster.benchmark.location
   node_count = var.main_pool_node_count
 
   node_config {
@@ -22,6 +23,7 @@ resource "google_container_node_pool" "main_workers" {
 resource "google_container_node_pool" "jingra" {
   name       = var.jingra_pool_name
   cluster    = google_container_cluster.benchmark.name
+  location   = google_container_cluster.benchmark.location
   node_count = var.jingra_pool_node_count
 
   node_config {
@@ -35,6 +37,7 @@ resource "google_container_node_pool" "ui" {
 
   name       = var.ui_pool_name
   cluster    = google_container_cluster.benchmark.name
+  location   = google_container_cluster.benchmark.location
   node_count = var.ui_pool_node_count
 
   node_config {

@@ -32,8 +32,6 @@ define ENGINE_CREDENTIALS_UPSERT
 	$(JINGRA_ELASTICSEARCH_FETCH_ES_PASS) \
 	if [ -n "$$ES_PASS" ]; then \
 		jingra_credentials_apply_once "$$ES_PASS"; \
-	else \
-		echo >&2 "Note: es-cluster-es-elastic-user not found; jingra-credentials not updated. Run secrets-create again after the cluster exists."; \
 	fi; \
 
 endef
@@ -53,31 +51,19 @@ endef
 k8s-apply: secrets-create k8s-apply-manifests _k8s-wait-ready k8s-post-apply
 
 k8s-post-apply:
-	@echo "Updating jingra-credentials with current Elasticsearch password..."
 	@NS="$(or $(NAMESPACE),default)"; \
 	$(JINGRA_CREDENTIALS_SHELL_FUNCTIONS) \
 	$(JINGRA_ELASTICSEARCH_FETCH_ES_PASS) \
 	if [ -n "$$ES_PASS" ]; then \
 		jingra_credentials_apply_once "$$ES_PASS"; \
-		echo "✓ jingra-credentials updated"; \
-		echo "Activating Elasticsearch trial license..."; \
 		ES_POD=$$(kubectl get pod -n "$$NS" -l common.k8s.elastic.co/type=elasticsearch -o jsonpath='{.items[0].metadata.name}' 2>/dev/null); \
-		if [ -z "$$ES_POD" ]; then \
-			echo "⚠ Warning: no Elasticsearch pod found; skipping trial activation"; \
-		else \
+		if [ -n "$$ES_POD" ]; then \
 			TRIAL_RESPONSE=$$(kubectl exec -n "$$NS" "$$ES_POD" -- \
 				curl -sk -u "elastic:$$ES_PASS" -X POST "https://localhost:9200/_license/start_trial?acknowledge=true" 2>&1); \
-			echo "  Trial response: $$TRIAL_RESPONSE"; \
-			if echo "$$TRIAL_RESPONSE" | grep -q '"trial_was_started":true'; then \
-				echo "✓ Trial license activated"; \
-			elif echo "$$TRIAL_RESPONSE" | grep -q '"error_message"'; then \
-				echo "⚠ Trial activation returned an error (check response above)"; \
-			else \
-				echo "✓ Trial license activation attempted (check response above)"; \
+			if echo "$$TRIAL_RESPONSE" | grep -q '"error_message"'; then \
+				echo >&2 "WARNING: trial activation failed: $$TRIAL_RESPONSE"; \
 			fi; \
 		fi; \
-	else \
-		echo "⚠ Warning: es-cluster-es-elastic-user not found"; \
 	fi
 
 k8s-apply-manifests:

@@ -23,7 +23,7 @@ This benchmark compares approximate nearest neighbor (ANN) vector search between
 
 - **3 data nodes** per engine cluster (`workerCount` in `shared/variables/k8s.yml`; pool `n4-standard-8` in `shared/variables/terraform.tfvars`)
 - **320 Gi** persistent volume per data pod on **hyperdisk-balanced** (160 000 IOPS / 2 400 MB/s provisioned); StorageClass defined in `shared/infra/k8s/storage-class.yml`
-- GKE on GCP (**us-central1-b** in `shared/variables/terraform.tfvars`)
+- GKE on GCP (default zone **us-central1-a** via `GKE_ZONE` in the `Makefile`; override with e.g. `make terraform-apply GKE_ZONE=us-east1-b`)
 - Separate clusters for Elasticsearch and Qdrant (`engines/<stack>/terraform/`)
 
 ## Key results (recall@100)
