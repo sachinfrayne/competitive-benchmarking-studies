@@ -1,5 +1,0 @@
-# Public benchmark metadata: canonical dataset URLs and the Jingra evaluation run_id.
-# (Not secrets — committed defaults. Override run_id at make time with RUN_ID=... if needed.)
-run_id: "es-9.4-vs-qd-1.17-jingra-0.2.2"
-dataset_data_url: "https://storage.googleapis.com/elastic-benchmark-datasets/wiki-dpr-e5-768/data.parquet"
-dataset_queries_url: "https://storage.googleapis.com/elastic-benchmark-datasets/wiki-dpr-e5-768/queries.parquet"

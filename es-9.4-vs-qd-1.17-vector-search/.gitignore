@@ -1,14 +1,12 @@
-# --- Terraform & GCP service account key ---
-shared/secrets/credentials.json
+# --- Terraform & GCP ---
 .terraform/
 .terraform.lock.hcl
 *.tfstate
 *.tfstate.backup
-shared/secrets/terraform.tfvars
 .terraform.tfstate.lock.info
 
 # --- Secrets ---
-shared/secrets/.secrets.env
+.secrets.env
 
 # --- Keys / certs ---
 *.pem

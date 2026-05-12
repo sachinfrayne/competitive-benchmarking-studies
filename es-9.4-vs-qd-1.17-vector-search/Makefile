@@ -1,5 +1,7 @@
-SHELL    := /bin/bash
+SHELL     := /bin/bash
 REPO_ROOT := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+
+# ── Engine discovery ──────────────────────────────────────────────────────────
 
 ENGINE_MK_FILES := $(sort $(wildcard $(REPO_ROOT)*/engine.mk))
 ALL_ENGINES     := $(filter-out analyze,$(notdir $(patsubst %/engine.mk,%,$(ENGINE_MK_FILES))))
@@ -14,11 +16,30 @@ ENGINE_TARGETS := \
 	jingra-eval jingra-eval-stop jingra-eval-logs copy-query-dumps \
 	status metrics logs-engine connect-ui logs-ui
 
--include $(REPO_ROOT)shared/secrets/.secrets.env
+-include $(REPO_ROOT).env
+-include $(REPO_ROOT).secrets.env
 
+# ── Shared macro (used in both contexts) ─────────────────────────────────────
+
+# Source both env files into a recipe shell. Usage: $(call SOURCE_ENV)
+define SOURCE_ENV
+ENV_FILE='$(REPO_ROOT).env'; \
+[[ -f "$$ENV_FILE" ]] || { echo >&2 "ERROR: .env not found (expected at $$ENV_FILE)"; exit 1; }; \
+set -a; source "$$ENV_FILE"; set +a; \
+SECRETS_ENV='$(REPO_ROOT).secrets.env'; \
+[[ ! -f "$$SECRETS_ENV" ]] || { set -a; source "$$SECRETS_ENV"; set +a; };
+endef
+
+define MERGE_RUN_ID_TO_FILE
+command -v yq >/dev/null 2>&1 || { echo >&2 "ERROR: yq is required"; exit 1; }; \
+rid="$(RUN_ID)"; \
+yq eval '$(3) = "'"$$rid"'"' "$(1)" >"$(2)"
+endef
+
+# =============================================================================
 ifdef ENGINE
-
-# ── Engine context (recursive invocation) ────────────────────────────────────
+# ── Engine context (single-stack execution) ───────────────────────────────────
+# =============================================================================
 
 STACK_DIR := $(REPO_ROOT)$(ENGINE)/
 ifeq ($(wildcard $(STACK_DIR)engine.mk),)
@@ -36,83 +57,93 @@ JINGRA_QUERIES_DIR ?= $(STACK_DIR)queries
 
 include $(STACK_DIR)engine.mk
 
-.PHONY: connect-k8s k8s-delete confirm-k8s-delete secrets-create \
+.PHONY: k8s-delete confirm-k8s-delete secrets-create \
 	terraform-init terraform-plan terraform-apply terraform-destroy terraform-import \
 	jingra-load jingra-load-stop jingra-eval jingra-eval-stop \
 	status metrics logs-engine connect-ui jingra-load-logs jingra-eval-logs copy-query-dumps
 
-# Terraform / GKE zone (single source for connect-k8s and Terraform location)
+# ── Terraform ─────────────────────────────────────────────────────────────────
 
-GKE_ZONE ?= us-central1-a
-
-TF_CLI_VAR_FILES := -var-file=$(REPO_ROOT)shared/secrets/terraform.tfvars -var-file=$(REPO_ROOT)shared/variables/terraform.tfvars
-TF_CLI_VARS      := -var=location=$(GKE_ZONE)
+TF_CLI_VARS := \
+	-var=project_id=$(PROJECT_ID) \
+	-var=location=$(GKE_ZONE) \
+	-var=deletion_protection=$(DELETION_PROTECTION) \
+	-var=jingra_pool_disk_size_gb=$(JINGRA_POOL_DISK_SIZE_GB) \
+	-var=jingra_pool_machine_type=$(JINGRA_POOL_MACHINE_TYPE) \
+	-var=jingra_pool_name=$(JINGRA_POOL_NAME) \
+	-var=jingra_pool_node_count=$(JINGRA_POOL_NODE_COUNT) \
+	-var=main_pool_disk_size_gb=$(MAIN_POOL_DISK_SIZE_GB) \
+	-var=main_pool_disk_type=$(MAIN_POOL_DISK_TYPE) \
+	-var=main_pool_machine_type=$(MAIN_POOL_MACHINE_TYPE) \
+	-var=main_pool_node_count=$(MAIN_POOL_NODE_COUNT) \
+	-var=ui_pool_disk_size_gb=$(UI_POOL_DISK_SIZE_GB) \
+	-var=ui_pool_machine_type=$(UI_POOL_MACHINE_TYPE) \
+	-var=ui_pool_node_count=$(UI_POOL_NODE_COUNT)
 
 terraform-init:
-	cp "$(REPO_ROOT)shared/infra/terraform/modules/gke-benchmark/gke-engine-root-variables.tf" "$(STACK_DIR)terraform/gke-engine-root-variables.tf"
+	cp "$(REPO_ROOT)infra/terraform/modules/gke-benchmark/gke-engine-root-variables.tf" \
+	   "$(STACK_DIR)terraform/gke-engine-root-variables.tf"
+	@$(SOURCE_ENV) \
 	cd $(STACK_DIR)terraform && terraform init
 
 terraform-plan: terraform-init
-	cd $(STACK_DIR)terraform && terraform plan $(TF_CLI_VAR_FILES) $(TF_CLI_VARS)
+	@$(SOURCE_ENV) \
+	cd $(STACK_DIR)terraform && terraform plan $(TF_CLI_VARS)
 
 terraform-apply: terraform-init
-	cd $(STACK_DIR)terraform && terraform apply $(TF_CLI_VAR_FILES) $(TF_CLI_VARS)
+	@$(SOURCE_ENV) \
+	cd $(STACK_DIR)terraform && terraform apply $(TF_CLI_VARS)
 
 terraform-destroy: terraform-init
 	@echo >&2 "WARNING: This will delete ALL resources."
 	@read -p "Are you sure? (yes/no): " confirm && [ "$$confirm" = "yes" ]
-	cd $(STACK_DIR)terraform && terraform destroy $(TF_CLI_VAR_FILES) $(TF_CLI_VARS)
+	@$(SOURCE_ENV) \
+	cd $(STACK_DIR)terraform && terraform destroy $(TF_CLI_VARS)
 
 terraform-import: terraform-init
 	@[ -n "$${ADDR:-}" ] || { echo >&2 "ERROR: ADDR is required."; exit 1; }; \
-	[ -n "$${ID:-}" ]   || { echo >&2 "ERROR: ID is required."; exit 1; }; \
+	[ -n "$${ID:-}" ]   || { echo >&2 "ERROR: ID is required.";   exit 1; }; \
+	$(SOURCE_ENV) \
 	cd "$(STACK_DIR)terraform" && { \
 		printf '+ terraform import %q %q\n' "$$ADDR" "$$ID"; \
-		terraform import $(TF_CLI_VAR_FILES) $(TF_CLI_VARS) "$$ADDR" "$$ID"; \
+		terraform import $(TF_CLI_VARS) "$$ADDR" "$$ID"; \
 	}
 
-# Kubernetes
+# ── Kubernetes ────────────────────────────────────────────────────────────────
 
-K8S_VARS                ?= $(REPO_ROOT)shared/variables/k8s.yml
 K8S_VARS_EXTRA_SHELL    ?=
 K8S_ENVSUBST_EXTRA_VARS ?=
 
-K8S_ENVSUBST_VARS := $${workerCount} $${storageClassName} $${storageSize} $${memoryRequest} $${cpuRequest} $${memoryLimit} $${cpuLimit} $${engineVersion}
+K8S_ENVSUBST_VARS := \
+	$${WORKER_COUNT} $${STORAGE_CLASS_NAME} $${STORAGE_SIZE} \
+	$${MEMORY_REQUEST} $${CPU_REQUEST} $${MEMORY_LIMIT} $${CPU_LIMIT} $${ENGINE_VERSION}
 
 connect-k8s:
-	@PROJECT_ID=$$(grep '^project_id' $(REPO_ROOT)shared/secrets/terraform.tfvars | awk -F'=' '{print $$2}' | tr -d ' "'); \
-	gcloud container clusters get-credentials $(GKE_CLUSTER_NAME) --zone $(GKE_ZONE) --project $$PROJECT_ID; \
+	@$(SOURCE_ENV) \
+	[[ -n "$${PROJECT_ID:-}" ]] || { echo >&2 "ERROR: PROJECT_ID not set in .secrets.env"; exit 1; }; \
+	gcloud container clusters get-credentials $(GKE_CLUSTER_NAME) \
+	       --zone $(GKE_ZONE) --project "$$PROJECT_ID"; \
 	if ! kubectl cluster-info --request-timeout=20s >/dev/null; then \
 		echo >&2 "ERROR: Cannot reach the Kubernetes API."; \
 		echo >&2 "  Check master authorized networks, VPN, or run:"; \
 		echo >&2 "  gcloud container clusters describe $(GKE_CLUSTER_NAME) --zone $(GKE_ZONE) --project $$PROJECT_ID"; \
 		exit 1; \
-	fi; \
-	:
+	fi
 
 define KUBECTL_APPLY_K8S_FROM_VARS
 	@set -euo pipefail; \
-	k8s_read_yaml_value() { \
-		local key="$$1" file="$$2"; \
-		[[ -f "$$file" ]] || { echo >&2 "ERROR: file not found: $$file"; exit 1; }; \
-		yq ".$$key" "$$file"; \
-	}; \
-	K8S_VARS_FILE='$(K8S_VARS)'; \
-	STACK_VERSION_FILE='$(REPO_ROOT)shared/variables/versions/.$(ENGINE)'; \
-	[[ -f "$$K8S_VARS_FILE" ]]      || { echo >&2 "ERROR: K8S vars file not found: $$K8S_VARS_FILE"; exit 1; }; \
-	[[ -f "$$STACK_VERSION_FILE" ]] || { echo >&2 "ERROR: version file not found: $$STACK_VERSION_FILE"; exit 1; }; \
-	export storageClassName="$$( k8s_read_yaml_value storageClassName "$$K8S_VARS_FILE" )"; \
-	export storageSize="$$(      k8s_read_yaml_value storageSize      "$$K8S_VARS_FILE" )"; \
-	export memoryRequest="$$(    k8s_read_yaml_value memoryRequest    "$$K8S_VARS_FILE" )"; \
-	export cpuRequest="$$(       k8s_read_yaml_value cpuRequest       "$$K8S_VARS_FILE" )"; \
-	export memoryLimit="$$(      k8s_read_yaml_value memoryLimit      "$$K8S_VARS_FILE" )"; \
-	export cpuLimit="$$(         k8s_read_yaml_value cpuLimit         "$$K8S_VARS_FILE" )"; \
-	export workerCount="$$(      k8s_read_yaml_value workerCount      "$$K8S_VARS_FILE" )"; \
-	engineVersion="$$(head -n1 "$$STACK_VERSION_FILE" | tr -d '\r' | sed 's/^[[:space:]]*//;s/[[:space:]]*$$//')"; \
-	[[ -n "$$engineVersion" && "$$engineVersion" != \#* ]] || { echo >&2 "ERROR: invalid version in $$STACK_VERSION_FILE"; exit 1; }; \
-	export engineVersion; \
+	$(SOURCE_ENV) \
+	for var in STORAGE_CLASS_NAME STORAGE_SIZE MEMORY_REQUEST CPU_REQUEST MEMORY_LIMIT CPU_LIMIT WORKER_COUNT; do \
+		[[ -n "$${!var:-}" ]] || { echo >&2 "ERROR: $$var is not set in .env"; exit 1; }; \
+	done; \
+	export STORAGE_CLASS_NAME STORAGE_SIZE MEMORY_REQUEST CPU_REQUEST MEMORY_LIMIT CPU_LIMIT WORKER_COUNT; \
+	ENGINE_VER_VAR="$$(echo '$(ENGINE)' | tr '[:lower:]' '[:upper:]')_VERSION"; \
+	ENGINE_VERSION="$${!ENGINE_VER_VAR}"; \
+	[[ -n "$$ENGINE_VERSION" ]] || { echo >&2 "ERROR: $$ENGINE_VER_VAR is not set (add to .env or .secrets.env)"; exit 1; }; \
+	export ENGINE_VERSION; \
 	$(K8S_VARS_EXTRA_SHELL) \
-	[[ ! -f '$(REPO_ROOT)shared/infra/k8s/storage-class.yml' ]] || kubectl apply -f '$(REPO_ROOT)shared/infra/k8s/storage-class.yml'; \
+	[[ ! -f '$(REPO_ROOT)infra/k8s/storage-class.yml' ]] \
+	    || kubectl apply -f '$(REPO_ROOT)infra/k8s/storage-class.yml'; \
 	RENDER_DIR="$$(mktemp -d)"; \
 	trap 'rm -rf "$$RENDER_DIR"' EXIT; \
 	shopt -s nullglob; \
@@ -127,26 +158,20 @@ confirm-k8s-delete:
 	@read -p "Are you sure? (yes/no): " confirm && [ "$$confirm" = "yes" ]
 
 k8s-delete: connect-k8s confirm-k8s-delete k8s-delete-impl
-	@[[ ! -f '$(REPO_ROOT)shared/infra/k8s/storage-class.yml' ]] || \
-		kubectl delete -f '$(REPO_ROOT)shared/infra/k8s/storage-class.yml' --ignore-not-found
+	@[[ ! -f '$(REPO_ROOT)infra/k8s/storage-class.yml' ]] || \
+		kubectl delete -f '$(REPO_ROOT)infra/k8s/storage-class.yml' --ignore-not-found
 
-# Jingra
-
-define MERGE_RUN_ID_TO_FILE
-command -v yq >/dev/null 2>&1 || { echo >&2 "ERROR: yq is required"; exit 1; }; \
-if [ -n "$(RUN_ID)" ]; then rid="$(RUN_ID)"; else rid="$$(yq eval '.run_id' "$(REPO_ROOT)shared/variables/benchmark.yml")"; fi; \
-yq eval '$(3) = "'"$$rid"'"' "$(1)" >"$(2)"
-endef
+# ── Jingra ────────────────────────────────────────────────────────────────────
 
 define APPLY_JINGRA_CONFIG
 	@NS="$(or $(NAMESPACE),default)"; \
 	TMP="$$(mktemp)"; \
 	trap 'rm -f "$$TMP"' EXIT; \
 	$(call MERGE_RUN_ID_TO_FILE,$(JINGRA_CONFIG),$$TMP,.evaluation.run_id); \
-	kubectl create configmap jingra-config   --from-file=jingra.yaml="$$TMP"     -n "$$NS" --dry-run=client -o yaml | kubectl apply -f -; \
+	kubectl create configmap jingra-config   --from-file=jingra.yaml="$$TMP"      -n "$$NS" --dry-run=client -o yaml | kubectl apply -f -; \
 	kubectl create configmap jingra-schemas  --from-file="$(JINGRA_SCHEMAS_DIR)"  -n "$$NS" --dry-run=client -o yaml | kubectl apply -f -; \
 	kubectl create configmap jingra-queries  --from-file="$(JINGRA_QUERIES_DIR)"  -n "$$NS" --dry-run=client -o yaml | kubectl apply -f -; \
-	kubectl apply -f $(REPO_ROOT)shared/infra/k8s/jingra-datasets-pvc.yml
+	kubectl apply -f $(REPO_ROOT)infra/k8s/jingra-datasets-pvc.yml
 endef
 
 define jingra_submit
@@ -157,7 +182,8 @@ define jingra_submit
 	[ -n "$$JINGRA_VER" ] || JINGRA_VER=$$(echo "$$JINGRA_IMAGE" | sed 's/^.*://'); \
 	[ -n "$$JINGRA_VER" ] || JINGRA_VER=unknown; \
 	export JINGRA_VERSION="$$JINGRA_VER"; \
-	cat $(REPO_ROOT)shared/infra/k8s/jingra-$(1)-job.yml | envsubst '$${JINGRA_IMAGE} $${JINGRA_VERSION}' | kubectl apply -f -
+	cat $(REPO_ROOT)infra/k8s/jingra-$(1)-job.yml \
+	    | envsubst '$${JINGRA_IMAGE} $${JINGRA_VERSION}' | kubectl apply -f -
 endef
 
 jingra-load: secrets-create connect-k8s jingra-load-stop
@@ -172,7 +198,39 @@ jingra-eval: secrets-create connect-k8s jingra-eval-stop
 jingra-eval-stop: connect-k8s
 	kubectl delete job jingra-eval --ignore-not-found
 
-# Secrets
+define FOLLOW_JOB_LOGS
+	@POD=$$(kubectl get pods -l job-name=$(1) --field-selector=status.phase=Running \
+	         -o jsonpath='{.items[0].metadata.name}' 2>/dev/null); \
+	[ -n "$$POD" ] || POD=$$(kubectl get pods -l job-name=$(1) \
+	                          --sort-by=.metadata.creationTimestamp \
+	                          -o jsonpath='{.items[-1].metadata.name}' 2>/dev/null); \
+	[ -n "$$POD" ] || { echo >&2 "ERROR: No pods found for job $(1)"; exit 1; }; \
+	if [ -n "$(LINES)" ]; then kubectl logs -f --tail=$(LINES) $$POD; else kubectl logs -f $$POD; fi
+endef
+
+jingra-load-logs: connect-k8s
+	$(call FOLLOW_JOB_LOGS,jingra-load)
+
+jingra-eval-logs: connect-k8s
+	$(call FOLLOW_JOB_LOGS,jingra-eval)
+
+copy-query-dumps: connect-k8s
+	@NS="$(or $(NAMESPACE),default)"; \
+	REMOTE="$(or $(QUERY_DUMP_REMOTE),/app/query-dumps/)"; \
+	LOCAL="$(or $(QUERY_DUMP_LOCAL),./query-dumps)"; \
+	POD="$(strip $(EVAL_POD))"; \
+	[ -n "$$POD" ] || POD=$$(kubectl get pods -n "$$NS" -l job-name=jingra-eval \
+	                           --field-selector=status.phase=Running \
+	                           -o jsonpath='{.items[0].metadata.name}' 2>/dev/null); \
+	if [ -z "$$POD" ]; then \
+		echo >&2 "ERROR: No Running jingra-eval pod in namespace $$NS."; \
+		echo >&2 "  Set EVAL_POD=<name> or run this while eval is in progress."; \
+		exit 1; \
+	fi; \
+	mkdir -p "$$LOCAL"; \
+	kubectl cp "$$NS/$$POD:$$REMOTE" "$$LOCAL"
+
+# ── Secrets ───────────────────────────────────────────────────────────────────
 
 ENGINE_SECRET_PREREQS     ?=
 ENGINE_SOURCE_ENV         ?=
@@ -186,20 +244,16 @@ define JINGRA_CREDENTIALS_SHELL_FUNCTIONS
 			--from-literal=ENGINE_PASSWORD="$$pwd" \
 			--namespace="$$NS" \
 			--dry-run=client -o yaml | kubectl apply -f -; \
-	}; \
+	};
 
 endef
 
 secrets-create: connect-k8s $(ENGINE_SECRET_PREREQS)
 	@set -euo pipefail; \
 	NS="$(or $(NAMESPACE),default)"; \
-	SECRETS_ENV="$(REPO_ROOT)shared/secrets/.secrets.env"; \
-	[[ ! -f "$$SECRETS_ENV" ]] || { set -a; source "$$SECRETS_ENV"; set +a; }; \
-	BENCHMARK_YML="$(REPO_ROOT)shared/variables/benchmark.yml"; \
-	DATASET_DATA_URL=$$(yq eval '.dataset_data_url' "$$BENCHMARK_YML"); \
-	DATASET_QUERIES_URL=$$(yq eval '.dataset_queries_url' "$$BENCHMARK_YML"); \
-	[[ -n "$$DATASET_DATA_URL"    && "$$DATASET_DATA_URL"    != "null" ]] || { echo >&2 "ERROR: dataset_data_url missing in $$BENCHMARK_YML"; exit 1; }; \
-	[[ -n "$$DATASET_QUERIES_URL" && "$$DATASET_QUERIES_URL" != "null" ]] || { echo >&2 "ERROR: dataset_queries_url missing in $$BENCHMARK_YML"; exit 1; }; \
+	$(SOURCE_ENV) \
+	[[ -n "$${DATASET_DATA_URL:-}"    ]] || { echo >&2 "ERROR: DATASET_DATA_URL not set in .env";    exit 1; }; \
+	[[ -n "$${DATASET_QUERIES_URL:-}" ]] || { echo >&2 "ERROR: DATASET_QUERIES_URL not set in .env"; exit 1; }; \
 	$(ENGINE_SOURCE_ENV) \
 	for var in DOCKER_USERNAME DOCKER_PASSWORD DOCKER_EMAIL; do \
 		[[ -n "$${!var:-}" ]] || { echo >&2 "ERROR: $$var not set"; exit 1; }; \
@@ -227,18 +281,18 @@ secrets-create: connect-k8s $(ENGINE_SECRET_PREREQS)
 		--from-literal=DATASET_QUERIES_URL="$$DATASET_QUERIES_URL" \
 		--namespace="$$NS"
 
-# Observability
+# ── Observability ─────────────────────────────────────────────────────────────
 
-STACK_ENGINE_LABEL     ?= Engine
-ENGINE_POD_SELECTOR    ?=
-UI_POD_SELECTOR        ?=
-SERVICE_LABEL_SELECTOR ?=
-SERVICE_NAMES          ?=
+STACK_ENGINE_LABEL      ?= Engine
+ENGINE_POD_SELECTOR     ?=
+UI_POD_SELECTOR         ?=
+SERVICE_LABEL_SELECTOR  ?=
+SERVICE_NAMES           ?=
 ENGINE_LOG_POD_SELECTOR ?=
-UI_SERVICE_NAME        ?=
-UI_URL_TEMPLATE        ?=
-UI_CREDENTIAL_LINES    ?=
-UI_NAMESPACE           ?= $(or $(NAMESPACE),default)
+UI_SERVICE_NAME         ?=
+UI_URL_TEMPLATE         ?=
+UI_CREDENTIAL_LINES     ?=
+UI_NAMESPACE            ?= $(or $(NAMESPACE),default)
 
 status: connect-k8s
 	@echo "$(STACK_ENGINE_LABEL) pods:"; \
@@ -269,7 +323,8 @@ metrics: connect-k8s
 	@kubectl top nodes 2>/dev/null || true
 
 logs-engine: connect-k8s
-	@POD=$$(kubectl get pods -l "$(ENGINE_LOG_POD_SELECTOR)" -o jsonpath='{.items[0].metadata.name}' 2>/dev/null); \
+	@POD=$$(kubectl get pods -l "$(ENGINE_LOG_POD_SELECTOR)" \
+	         -o jsonpath='{.items[0].metadata.name}' 2>/dev/null); \
 	[ -n "$$POD" ] || { echo >&2 "ERROR: No engine pods found"; exit 1; }; \
 	kubectl logs -f "$$POD"
 
@@ -277,7 +332,8 @@ connect-ui: connect-k8s
 	@[ -n "$(strip $(UI_SERVICE_NAME))" ] || { echo >&2 "ERROR: UI_SERVICE_NAME is not set"; exit 1; }; \
 	[ -n "$(strip $(UI_URL_TEMPLATE))"  ] || { echo >&2 "ERROR: UI_URL_TEMPLATE is not set";  exit 1; }; \
 	NS="$(UI_NAMESPACE)"; \
-	EXTERNAL_IP=$$(kubectl get svc "$(UI_SERVICE_NAME)" -n "$$NS" -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null); \
+	EXTERNAL_IP=$$(kubectl get svc "$(UI_SERVICE_NAME)" -n "$$NS" \
+	               -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null); \
 	if [ -z "$$EXTERNAL_IP" ]; then \
 		echo >&2 "LoadBalancer IP not ready."; \
 		kubectl get svc "$(UI_SERVICE_NAME)" -n "$$NS" >&2; \
@@ -286,52 +342,23 @@ connect-ui: connect-k8s
 	eval "echo \"$(UI_URL_TEMPLATE)\""; \
 	$(UI_CREDENTIAL_LINES)
 
-define FOLLOW_JOB_LOGS
-	@POD=$$(kubectl get pods -l job-name=$(1) --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}' 2>/dev/null); \
-	[ -n "$$POD" ] || POD=$$(kubectl get pods -l job-name=$(1) --sort-by=.metadata.creationTimestamp -o jsonpath='{.items[-1].metadata.name}' 2>/dev/null); \
-	[ -n "$$POD" ] || { echo >&2 "ERROR: No pods found for job $(1)"; exit 1; }; \
-	if [ -n "$(LINES)" ]; then kubectl logs -f --tail=$(LINES) $$POD; else kubectl logs -f $$POD; fi
-endef
-
-jingra-load-logs: connect-k8s
-	$(call FOLLOW_JOB_LOGS,jingra-load)
-
-jingra-eval-logs: connect-k8s
-	$(call FOLLOW_JOB_LOGS,jingra-eval)
-
-copy-query-dumps: connect-k8s
-	@NS="$(or $(NAMESPACE),default)"; \
-	REMOTE="$(or $(QUERY_DUMP_REMOTE),/app/query-dumps/)"; \
-	LOCAL="$(or $(QUERY_DUMP_LOCAL),./query-dumps)"; \
-	POD="$(strip $(EVAL_POD))"; \
-	[ -n "$$POD" ] || POD=$$(kubectl get pods -n "$$NS" -l job-name=jingra-eval --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}' 2>/dev/null); \
-	if [ -z "$$POD" ]; then \
-		echo >&2 "ERROR: No Running jingra-eval pod in namespace $$NS."; \
-		echo >&2 "  Set EVAL_POD=<name> or run this while eval is in progress."; \
-		exit 1; \
-	fi; \
-	mkdir -p "$$LOCAL"; \
-	kubectl cp "$$NS/$$POD:$$REMOTE" "$$LOCAL"
-
+# =============================================================================
 else
+# ── Root context (multi-stack dispatch) ───────────────────────────────────────
+# =============================================================================
 
-# ── Root context ──────────────────────────────────────────────────────────────
-
-ANALYZE_DIR       := $(REPO_ROOT)analyze
+ANALYZE_DIR        := $(REPO_ROOT)analyze
 ANALYZE_OUTPUT_DIR := $(ANALYZE_DIR)/output
-ANALYZE_CONFIG    ?= $(ANALYZE_DIR)/jingra.yml
+ANALYZE_CONFIG     ?= $(ANALYZE_DIR)/jingra.yml
 
-.PHONY: help analyze analyze-clean $(ALL_ENGINES) \
+.PHONY: help analyze analyze-clean \
+	$(ALL_ENGINES) \
 	terraform-plan terraform-apply terraform-destroy terraform-import \
 	$(ENGINE_TARGETS)
 
 .DEFAULT_GOAL := help
 
-define MERGE_RUN_ID_TO_FILE
-command -v yq >/dev/null 2>&1 || { echo >&2 "ERROR: yq is required"; exit 1; }; \
-if [ -n "$(RUN_ID)" ]; then rid="$(RUN_ID)"; else rid="$$(yq eval '.run_id' "$(REPO_ROOT)shared/variables/benchmark.yml")"; fi; \
-yq eval '$(3) = "'"$$rid"'"' "$(1)" >"$(2)"
-endef
+# ── Help ──────────────────────────────────────────────────────────────────────
 
 help:
 	@echo "Vector search benchmark — run from repo root"
@@ -378,14 +405,14 @@ help:
 	@echo "  JINGRA_VERSION=<text>  optional; defaults to image tag after last ':'"
 	@echo "  NAMESPACE=<ns>         Kubernetes namespace (default: default)"
 	@echo "  LINES=<n>              tail limit for log targets"
-	@echo "  GKE_ZONE=<zone>        GKE zone for connect-k8s and Terraform location (default: us-central1-a)"
-	@echo "  K8S_VARS=<path>        sizing YAML override (default: shared/variables/k8s.yml)"
+	@echo "  GKE_ZONE=<zone>        GKE zone for connect-k8s and Terraform (default: from .env)"
 	@echo "  QUERY_DUMP_REMOTE=<p>  path in pod for copy-query-dumps"
 	@echo "  QUERY_DUMP_LOCAL=<p>   host directory for copy-query-dumps"
 	@echo "  EVAL_POD=<name>        pod override for copy-query-dumps"
 	@echo "  ADDR='...' ID='...'    required for terraform-import"
 	@echo "  ANALYZE_CONFIG=<path>  config override (default: analyze/jingra.yml)"
-	@echo ""
+
+# ── Analysis ──────────────────────────────────────────────────────────────────
 
 analyze-clean:
 	@rm -rf "$(ANALYZE_OUTPUT_DIR)"
@@ -395,9 +422,7 @@ $(ANALYZE_OUTPUT_DIR):
 
 analyze: analyze-clean | $(ANALYZE_OUTPUT_DIR)
 	@set -euo pipefail; \
-	if [ -f "$(REPO_ROOT)shared/secrets/.secrets.env" ]; then \
-		set -a; source "$(REPO_ROOT)shared/secrets/.secrets.env"; set +a; \
-	fi; \
+	$(SOURCE_ENV) \
 	for var in RESULTS_ES_URL RESULTS_ES_USER RESULTS_ES_PASSWORD JINGRA_IMAGE; do \
 		[ -n "$${!var:-}" ] || { echo >&2 "ERROR: $$var not set"; exit 1; }; \
 	done; \
@@ -410,13 +435,13 @@ analyze: analyze-clean | $(ANALYZE_OUTPUT_DIR)
 		engines_csv=$$(echo '$(strip $(ALL_ENGINES))' | tr ' ' ','); \
 	fi; \
 	export _ENGINES_CSV_YQ="$$engines_csv"; \
-	yq eval '.analysis.engines = (strenv(_ENGINES_CSV_YQ) | split(",") | map(trim))' "$$TMP" > "$$TMP.eng" && mv "$$TMP.eng" "$$TMP"; \
+	yq eval '.analysis.engines = (strenv(_ENGINES_CSV_YQ) | split(",") | map(trim))' \
+	    "$$TMP" > "$$TMP.eng" && mv "$$TMP.eng" "$$TMP"; \
 	unset _ENGINES_CSV_YQ; \
-	VERSIONS_DIR="$(REPO_ROOT)shared/variables/versions"; \
 	while IFS= read -r engine; do \
-		vfile="$$VERSIONS_DIR/.$$engine"; \
-		[[ -f "$$vfile" ]] || { echo >&2 "ERROR: version file not found: $$vfile"; exit 1; }; \
-		version="$$(head -n1 "$$vfile" | tr -d '[:space:]')"; \
+		engine_ver_var="$$(echo "$$engine" | tr '[:lower:]' '[:upper:]')_VERSION"; \
+		version="$${!engine_ver_var}"; \
+		[[ -n "$$version" ]] || { echo >&2 "ERROR: $${engine_ver_var} is not set (add to .env or .secrets.env)"; exit 1; }; \
 		TMP2="$$(mktemp)"; \
 		yq eval ".analysis.engine_versions.$$engine = \"$$version\"" "$$TMP" > "$$TMP2" && mv "$$TMP2" "$$TMP"; \
 	done < <(yq eval '.analysis.engines[]' "$$TMP"); \
@@ -428,6 +453,8 @@ analyze: analyze-clean | $(ANALYZE_OUTPUT_DIR)
 		-e RESULTS_ES_PASSWORD \
 		"$(JINGRA_IMAGE)" \
 		analyze /config/jingra.yml
+
+# ── Terraform dispatch ────────────────────────────────────────────────────────
 
 terraform-plan terraform-apply terraform-destroy:
 ifdef ENGINE
@@ -448,6 +475,8 @@ else
 	[ -n "$${ID:-}" ]   || { echo >&2 "ERROR: ID is required."; exit 1; }
 	$(MAKE) --no-print-directory ENGINE=$(ENGINE) $@
 endif
+
+# ── Engine targets dispatch ───────────────────────────────────────────────────
 
 $(ENGINE_TARGETS):
 	@[ -n "$(ENGINE)" ] || { \
