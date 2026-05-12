@@ -42,6 +42,22 @@ Full per-parameter rows: `analyze/output/recall@100_full_results.csv`.
 - The gap grows with recall: **~2× faster** at ~87% recall, **~13× faster** at ~96% recall
 - ES latency is nearly flat across the recall range (~83–93 ms); Qdrant latency climbs steeply (~172–1177 ms)
 
+## Prerequisites
+
+The following tools must be available in your PATH:
+
+| Tool | Notes |
+| ---- | ----- |
+| `gcloud` | Google Cloud SDK, authenticated (`gcloud auth login`) |
+| `terraform` | >= 1.0 |
+| `kubectl` | Configured after `make connect-k8s` |
+| `helm` | >= 3, required for the OpenSearch operator |
+| `docker` | With Buildx enabled for the multi-arch Jingra build |
+| `make` | |
+| `yq` | YAML processor |
+| `envsubst` | Usually bundled with `gettext` |
+| `jq` | Required to compact the GCP credentials JSON (see below) |
+
 ## Reproducing the Benchmark
 
 ### 1. Build the Jingra image
@@ -59,12 +75,48 @@ make build image=your-registry.example.com/your-namespace/jingra:0.2.2
 
 ### 2. Configure secrets
 
-Copy and fill the secrets file:
+Copy the example file and fill in each section:
 
 ```bash
 cp .secrets.env.example .secrets.env
-# edit .secrets.env with your credentials
 ```
+
+**GCP** (`PROJECT_ID`, `GOOGLE_CREDENTIALS`)
+
+You need a GCP project with the following APIs enabled:
+
+```bash
+gcloud services enable container.googleapis.com compute.googleapis.com \
+  --project=<your-project-id>
+```
+
+Create a service account and grant it the required roles:
+
+```bash
+gcloud iam service-accounts create benchmark-sa --project=<your-project-id>
+
+for role in roles/container.admin roles/compute.admin roles/iam.serviceAccountUser; do
+  gcloud projects add-iam-policy-binding <your-project-id> \
+    --member="serviceAccount:benchmark-sa@<your-project-id>.iam.gserviceaccount.com" \
+    --role="$role"
+done
+```
+
+Download the JSON key and compact it to a single line for `.secrets.env`:
+
+```bash
+gcloud iam service-accounts keys create key.json \
+  --iam-account=benchmark-sa@<your-project-id>.iam.gserviceaccount.com
+GOOGLE_CREDENTIALS=$(jq -c . key.json)
+```
+
+**Docker registry** (`DOCKER_*`)
+
+These credentials are used to create a Kubernetes image pull secret so GKE can pull the Jingra image. Use the same registry you pushed to in step 1.
+
+**Results cluster** (`RESULTS_ES_*`)
+
+An Elasticsearch cluster used to store benchmark results. Any reachable Elasticsearch instance works — Elastic Cloud, self-hosted, or local. The user needs write access to create indices. Set `RESULTS_ES_URL`, `RESULTS_ES_USER`, and `RESULTS_ES_PASSWORD` accordingly.
 
 ### 3. Run the benchmark
 

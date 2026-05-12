@@ -249,7 +249,6 @@ define JINGRA_CREDENTIALS_SHELL_FUNCTIONS
 			--namespace="$$NS" \
 			--dry-run=client -o yaml | kubectl apply -f -; \
 	};
-
 endef
 
 secrets-create: connect-k8s $(ENGINE_SECRET_PREREQS)

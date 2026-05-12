@@ -17,17 +17,8 @@ UI_URL_TEMPLATE := URL:      https://$${EXTERNAL_IP}:6333/dashboard
 
 ensure-qdrant-api-key-in-env:
 	@set -euo pipefail; \
-	GENERAL_SECRETS="$(REPO_ROOT)/shared/secrets/.secrets.env"; \
 	QDRANT_KEY_FILE="$(STACK_DIR).qdrant-api-key.env"; \
-	if [[ ! -f "$$GENERAL_SECRETS" ]]; then \
-		echo >&2 "ERROR: $$GENERAL_SECRETS not found. Copy shared/secrets/.secrets.env.example to shared/secrets/.secrets.env and fill values."; \
-		exit 1; \
-	fi; \
 	if [[ -f "$$QDRANT_KEY_FILE" ]] && grep -qE '^QDRANT_API_KEY=[^[:space:]]+' "$$QDRANT_KEY_FILE" 2>/dev/null; then \
-		exit 0; \
-	fi; \
-	if grep -qE '^QDRANT_API_KEY=[^[:space:]]+' "$$GENERAL_SECRETS" 2>/dev/null; then \
-		grep -E '^QDRANT_API_KEY=' "$$GENERAL_SECRETS" > "$$QDRANT_KEY_FILE"; \
 		exit 0; \
 	fi; \
 	if ! command -v openssl >/dev/null 2>&1; then \
@@ -81,8 +72,10 @@ define ENGINE_EXTRA_SECRETS
 endef
 
 define ENGINE_CREDENTIALS_UPSERT
-	$(JINGRA_CREDENTIALS_SHELL_FUNCTIONS) \
-	jingra_credentials_apply_once "$$QDRANT_API_KEY"; \
+	kubectl create secret generic jingra-credentials \
+		--from-literal=ENGINE_PASSWORD="$$QDRANT_API_KEY" \
+		--namespace="$$NS" \
+		--dry-run=client -o yaml | kubectl apply -f -; \
 
 endef
 
